@@ -15,6 +15,7 @@ import { useCreateChallenge } from "@/hooks/useChallenge";
 import { useCreateBaselineSnapshot } from "@/hooks/useBaseline";
 import { useAuth } from "@/contexts/AuthContext";
 import { hashPassword, setSessionUnlocked } from "@/lib/auth";
+import { api } from "@/lib/api";
 import { getUpcomingMonday, formatDate } from "@/lib/date-utils";
 import { calculateTDEE, calculateCalorieTarget } from "@/lib/tdee-utils";
 
