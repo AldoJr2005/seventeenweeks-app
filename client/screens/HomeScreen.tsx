@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { ScrollView, View, StyleSheet, ActivityIndicator, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -6,6 +6,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography, CardShadow } from "@/constants/theme";
@@ -21,6 +22,16 @@ import { useWeeklyPhotos, useWeeklyCheckIns } from "@/hooks/useWeeklyData";
 import { getToday, getCurrentWeekNumber, getWeekNumber, isMonday, formatDisplayDate } from "@/lib/date-utils";
 import type { HomeStackParamList } from "@/navigation/HomeStackNavigator";
 import type { Challenge, DayLog, WorkoutLog, HabitLog, WeeklyPhoto, WeeklyCheckIn } from "@shared/schema";
+
+const MOTIVATIONAL_PHRASES = [
+  "Consistency over perfection.",
+  "Keep the streak alive.",
+  "One day at a time.",
+  "Small steps, big results.",
+  "Trust the process.",
+  "Progress, not perfection.",
+  "Every day counts.",
+];
 
 type NavigationProp = NativeStackNavigationProp<HomeStackParamList>;
 
@@ -65,7 +76,9 @@ export default function HomeScreen() {
   const currentPhoto = (weeklyPhotos as WeeklyPhoto[] | undefined)?.find(p => p.weekNumber === currentWeek);
   const currentCheckIn = (weeklyCheckIns as WeeklyCheckIn[] | undefined)?.find(c => c.weekNumber === currentWeek);
 
+  const nutritionDone = !!todayNutrition && !todayNutrition.skipped;
   const nutritionStatus = todayNutrition ? (todayNutrition.skipped ? "Skipped" : "Done") : "Pending";
+  const workoutDone = !!todayWorkout;
   const workoutStatus = todayWorkout ? "Done" : "Pending";
   const weeklyCheckInStatus = currentPhoto && currentCheckIn 
     ? "Done" 
@@ -80,6 +93,18 @@ export default function HomeScreen() {
     todayHabits?.stepsDone,
     todayHabits?.sleepDone,
   ].filter(Boolean).length;
+  
+  const allDailyComplete = nutritionDone && workoutDone && habitsCompleted === 3;
+  const prevAllComplete = useRef(allDailyComplete);
+  
+  useEffect(() => {
+    if (allDailyComplete && !prevAllComplete.current) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    prevAllComplete.current = allDailyComplete;
+  }, [allDailyComplete]);
+  
+  const motivationalPhrase = MOTIVATIONAL_PHRASES[currentWeek % MOTIVATIONAL_PHRASES.length];
 
   const weekDayLogs = (dayLogs as DayLog[] | undefined)?.filter(log => {
     const logWeek = getWeekNumber(challenge.startDate, log.date);
@@ -105,9 +130,20 @@ export default function HomeScreen() {
       <ThemedText style={[styles.dateLabel, { color: theme.textSecondary }]}>
         {formatDisplayDate(today)}
       </ThemedText>
+      <ThemedText style={[styles.motivationalText, { color: theme.textSecondary }]}>
+        {motivationalPhrase}
+      </ThemedText>
 
       <Card style={styles.card}>
-        <ThemedText style={styles.cardTitle}>Today's Checklist</ThemedText>
+        <View style={styles.cardHeader}>
+          <ThemedText style={styles.cardTitle}>Today's Checklist</ThemedText>
+          {allDailyComplete ? (
+            <View style={[styles.completedBadge, { backgroundColor: theme.success + "15" }]}>
+              <Feather name="check" size={12} color={theme.success} />
+              <ThemedText style={[styles.completedBadgeText, { color: theme.success }]}>Completed</ThemedText>
+            </View>
+          ) : null}
+        </View>
         
         <ChecklistItem
           icon="edit-3"
@@ -286,14 +322,36 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     ...Typography.subheadline,
+    marginBottom: Spacing.xs,
+  },
+  motivationalText: {
+    ...Typography.footnote,
+    fontStyle: "italic",
     marginBottom: Spacing.xl,
   },
   card: {
     marginBottom: Spacing.lg,
   },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
   cardTitle: {
     ...Typography.headline,
-    marginBottom: Spacing.lg,
+  },
+  completedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+  },
+  completedBadgeText: {
+    ...Typography.caption,
+    fontWeight: "600",
   },
   checklistItem: {
     flexDirection: "row",

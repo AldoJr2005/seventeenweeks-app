@@ -25,6 +25,95 @@ type NavigationProp = NativeStackNavigationProp<ProgressStackParamList>;
 const TABS = ["Charts", "Photos", "Insights"] as const;
 type TabType = typeof TABS[number];
 
+function getConsistencyLabel(logged: number, total: number): string {
+  if (total <= 0) return "Just getting started.";
+  const ratio = logged / total;
+  if (ratio >= 0.9) return "Strong consistency.";
+  if (ratio >= 0.7) return "Good consistency.";
+  if (ratio >= 0.5) return "Building momentum.";
+  return "Room to improve.";
+}
+
+function getWorkoutLabel(workouts: number, weeks: number): string {
+  if (weeks <= 0) return "Just getting started.";
+  const avg = workouts / weeks;
+  if (avg >= 4) return "Excellent commitment.";
+  if (avg >= 3) return "On track with your plan.";
+  if (avg >= 2) return "Solid progress.";
+  return "Building the habit.";
+}
+
+function getPhotoLabel(taken: number, total: number): string {
+  if (total <= 0) return "Just getting started.";
+  const ratio = taken / total;
+  if (ratio >= 0.9) return "Great weekly adherence.";
+  if (ratio >= 0.7) return "Good photo tracking.";
+  if (ratio >= 0.5) return "Steady documentation.";
+  return "Room to improve.";
+}
+
+function getWeightLabel(change: number): string {
+  if (change < -5) return "Trending toward your goal.";
+  if (change < 0) return "Making progress.";
+  if (change === 0) return "Holding steady.";
+  return "Stay focused.";
+}
+
+function InsightRow({ 
+  count, 
+  label, 
+  interpretation, 
+  theme,
+  isWeight = false 
+}: { 
+  count: number; 
+  label: string; 
+  interpretation: string; 
+  theme: any;
+  isWeight?: boolean;
+}) {
+  return (
+    <View style={insightStyles.row}>
+      <View style={insightStyles.left}>
+        <ThemedText style={insightStyles.count}>
+          {isWeight ? count.toFixed(1) : count}
+        </ThemedText>
+        <ThemedText style={[insightStyles.label, { color: theme.textSecondary }]}>
+          {label}
+        </ThemedText>
+      </View>
+      <ThemedText style={[insightStyles.interpretation, { color: theme.success }]}>
+        {interpretation}
+      </ThemedText>
+    </View>
+  );
+}
+
+const insightStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: Spacing.md,
+  },
+  left: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: Spacing.xs,
+  },
+  count: {
+    ...Typography.title2,
+    fontWeight: "700",
+  },
+  label: {
+    ...Typography.subheadline,
+  },
+  interpretation: {
+    ...Typography.subheadline,
+    fontWeight: "500",
+  },
+});
+
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -181,10 +270,10 @@ export default function ProgressScreen() {
         <>
           <Pressable
             style={[styles.compareButton, { backgroundColor: theme.primary }]}
-            onPress={() => navigation.navigate("PhotoCompare", {})}
+            onPress={() => navigation.navigate("PhotoCompare", { week1: 1, week2: currentWeek })}
           >
             <Feather name="columns" size={20} color="#FFF" />
-            <ThemedText style={styles.compareButtonText}>Compare Photos</ThemedText>
+            <ThemedText style={styles.compareButtonText}>Week 1 vs Week {currentWeek}</ThemedText>
           </Pressable>
 
           <Pressable
@@ -199,33 +288,34 @@ export default function ProgressScreen() {
         <Card style={styles.card}>
           <ThemedText style={styles.cardTitle}>Insights</ThemedText>
           
-          <View style={styles.insightItem}>
-            <Feather name="check-circle" size={20} color={theme.success} />
-            <ThemedText style={styles.insightText}>
-              You've logged {((dayLogs as DayLog[] | undefined)?.filter(l => !l.skipped).length || 0)} days of nutrition
-            </ThemedText>
-          </View>
+          <InsightRow
+            count={((dayLogs as DayLog[] | undefined)?.filter(l => !l.skipped).length || 0)}
+            label="days of nutrition logged"
+            interpretation={getConsistencyLabel(((dayLogs as DayLog[] | undefined)?.filter(l => !l.skipped).length || 0), currentWeek * 7)}
+            theme={theme}
+          />
 
-          <View style={styles.insightItem}>
-            <Feather name="activity" size={20} color={theme.primary} />
-            <ThemedText style={styles.insightText}>
-              {((workoutLogs as WorkoutLog[] | undefined)?.filter(l => l.type !== "Rest").length || 0)} workouts completed so far
-            </ThemedText>
-          </View>
+          <InsightRow
+            count={((workoutLogs as WorkoutLog[] | undefined)?.filter(l => l.type !== "Rest").length || 0)}
+            label="workouts completed"
+            interpretation={getWorkoutLabel(((workoutLogs as WorkoutLog[] | undefined)?.filter(l => l.type !== "Rest").length || 0), currentWeek)}
+            theme={theme}
+          />
 
-          <View style={styles.insightItem}>
-            <Feather name="camera" size={20} color={theme.warning} />
-            <ThemedText style={styles.insightText}>
-              {((weeklyPhotos as any[] | undefined)?.length || 0)} of {currentWeek} weekly photos taken
-            </ThemedText>
-          </View>
+          <InsightRow
+            count={((weeklyPhotos as any[] | undefined)?.length || 0)}
+            label={`of ${currentWeek} photos taken`}
+            interpretation={getPhotoLabel(((weeklyPhotos as any[] | undefined)?.length || 0), currentWeek)}
+            theme={theme}
+          />
 
-          <View style={styles.insightItem}>
-            <Feather name="trending-down" size={20} color={theme.success} />
-            <ThemedText style={styles.insightText}>
-              {weightChange <= 0 ? `You've lost ${Math.abs(weightChange).toFixed(1)} ${challenge.unit}` : "Keep pushing, you've got this!"}
-            </ThemedText>
-          </View>
+          <InsightRow
+            count={Math.abs(weightChange)}
+            label={`${challenge.unit} ${weightChange <= 0 ? "lost" : "gained"}`}
+            interpretation={getWeightLabel(weightChange)}
+            theme={theme}
+            isWeight
+          />
         </Card>
       )}
     </ScrollView>
@@ -345,15 +435,5 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-  },
-  insightItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-    paddingVertical: Spacing.md,
-  },
-  insightText: {
-    ...Typography.body,
-    flex: 1,
   },
 });

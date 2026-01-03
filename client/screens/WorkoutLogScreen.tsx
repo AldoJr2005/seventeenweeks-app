@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
@@ -43,6 +44,7 @@ export default function WorkoutLogScreen() {
   const [duration, setDuration] = useState("");
   const [notes, setNotes] = useState("");
   const [exercises, setExercises] = useState("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   useEffect(() => {
     if (existingLog) {
@@ -79,7 +81,11 @@ export default function WorkoutLogScreen() {
       } else {
         await createWorkoutLog.mutateAsync(data);
       }
-      navigation.goBack();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowConfirmation(true);
+      setTimeout(() => {
+        navigation.goBack();
+      }, 800);
     } catch (error) {
       Alert.alert("Error", "Failed to save workout log");
     }
@@ -214,13 +220,22 @@ export default function WorkoutLogScreen() {
         </View>
       ) : null}
 
-      <Button
-        onPress={handleSave}
-        disabled={!workoutType || isSaving}
-        style={styles.saveButton}
-      >
-        {isSaving ? "Saving..." : existingLog ? "Update" : "Save Workout"}
-      </Button>
+      {showConfirmation ? (
+        <View style={[styles.confirmationContainer, { backgroundColor: theme.success + "15" }]}>
+          <Feather name="check-circle" size={24} color={theme.success} />
+          <ThemedText style={[styles.confirmationText, { color: theme.success }]}>
+            Workout logged. Nice work.
+          </ThemedText>
+        </View>
+      ) : (
+        <Button
+          onPress={handleSave}
+          disabled={!workoutType || isSaving}
+          style={styles.saveButton}
+        >
+          {isSaving ? "Saving..." : existingLog ? "Update" : "Save Workout"}
+        </Button>
+      )}
     </KeyboardAwareScrollViewCompat>
   );
 }
@@ -296,5 +311,18 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     marginTop: "auto",
+  },
+  confirmationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    marginTop: "auto",
+  },
+  confirmationText: {
+    ...Typography.headline,
+    fontWeight: "600",
   },
 });

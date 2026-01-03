@@ -261,20 +261,38 @@ export default function SettingsScreen() {
         </View>
       </Card>
 
-      <ThemedText style={styles.sectionHeader}>Goals</ThemedText>
+      <ThemedText style={styles.sectionHeader}>Plan</ThemedText>
       <Card style={styles.section}>
         <Pressable
           style={styles.settingsRow}
           onPress={() => navigation.navigate("TDEECalculator")}
         >
           <View style={styles.settingsRowLeft}>
-            <Feather name="activity" size={20} color={theme.textSecondary} />
+            <Feather name="target" size={20} color={theme.textSecondary} />
             <View>
-              <ThemedText style={styles.settingsLabel}>Calorie Calculator</ThemedText>
+              <ThemedText style={styles.settingsLabel}>Calories</ThemedText>
               <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
                 {(challenge as Challenge | undefined)?.targetCalories 
                   ? `${(challenge as Challenge).targetCalories} cal/day`
-                  : "Calculate your daily calories"}
+                  : "Not set"}
+              </ThemedText>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Pressable
+          style={styles.settingsRow}
+          onPress={() => navigation.navigate("TDEECalculator")}
+        >
+          <View style={styles.settingsRowLeft}>
+            <Feather name="pie-chart" size={20} color={theme.textSecondary} />
+            <View>
+              <ThemedText style={styles.settingsLabel}>Macros</ThemedText>
+              <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
+                {(challenge as Challenge | undefined)?.targetProteinGrams 
+                  ? `P${(challenge as Challenge).targetProteinGrams}g / C${(challenge as Challenge).targetCarbsGrams}g / F${(challenge as Challenge).targetFatGrams}g`
+                  : "Not set"}
               </ThemedText>
             </View>
           </View>
@@ -288,30 +306,16 @@ export default function SettingsScreen() {
           <View style={styles.settingsRowLeft}>
             <Feather name="zap" size={20} color={theme.textSecondary} />
             <View>
-              <ThemedText style={styles.settingsLabel}>Workout Preferences</ThemedText>
+              <ThemedText style={styles.settingsLabel}>Workout</ThemedText>
               <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
                 {(challenge as Challenge | undefined)?.workoutsPerWeek 
                   ? `${(challenge as Challenge).workoutsPerWeek} days/week`
-                  : "Set up your training"}
+                  : "Not set"}
               </ThemedText>
             </View>
           </View>
           <Feather name="chevron-right" size={20} color={theme.textSecondary} />
         </Pressable>
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <SettingsRow
-          icon="navigation"
-          label="Daily Step Goal"
-          value={`${((challenge as Challenge | undefined)?.stepGoal || 10000).toLocaleString()} steps`}
-          theme={theme}
-        />
-        <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <SettingsRow
-          icon="moon"
-          label="Sleep Goal"
-          value={`${(challenge as Challenge | undefined)?.sleepGoal || 8} hours`}
-          theme={theme}
-        />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <Pressable
           style={styles.settingsRow}
@@ -320,15 +324,48 @@ export default function SettingsScreen() {
           <View style={styles.settingsRowLeft}>
             <Feather name="clock" size={20} color={theme.textSecondary} />
             <View>
-              <ThemedText style={styles.settingsLabel}>Fasting Schedule</ThemedText>
+              <ThemedText style={styles.settingsLabel}>Fasting</ThemedText>
               <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
                 {(challenge as Challenge | undefined)?.fastingType && (challenge as Challenge).fastingType !== "none"
-                  ? `${(challenge as Challenge).fastingType} intermittent fasting`
+                  ? `${(challenge as Challenge).fastingType}`
                   : "Not enabled"}
               </ThemedText>
             </View>
           </View>
           <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingsRow
+          icon="navigation"
+          label="Steps"
+          value={`${((challenge as Challenge | undefined)?.stepGoal || 10000).toLocaleString()}/day`}
+          theme={theme}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingsRow
+          icon="moon"
+          label="Sleep"
+          value={`${(challenge as Challenge | undefined)?.sleepGoal || 8}h/night`}
+          theme={theme}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Pressable
+          style={styles.settingsRow}
+          onPress={() => {
+            Alert.alert(
+              "Reset Plan",
+              "This will re-run the setup wizard to update your goals. Your logged data will be preserved.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Reset Plan", onPress: () => navigation.getParent()?.navigate("HomeTab", { screen: "Onboarding" }) },
+              ]
+            );
+          }}
+        >
+          <View style={styles.settingsRowLeft}>
+            <Feather name="refresh-cw" size={20} color={theme.primary} />
+            <ThemedText style={[styles.settingsLabel, { color: theme.primary }]}>Reset Plan</ThemedText>
+          </View>
         </Pressable>
       </Card>
 

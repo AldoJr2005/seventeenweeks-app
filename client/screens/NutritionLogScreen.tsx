@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
@@ -14,7 +15,7 @@ import { useChallenge } from "@/hooks/useChallenge";
 import { useDayLog, useCreateDayLog, useUpdateDayLog } from "@/hooks/useDayLogs";
 import { getToday, formatLongDate, addDays } from "@/lib/date-utils";
 import type { LogStackParamList } from "@/navigation/LogStackNavigator";
-import type { DayLog } from "@shared/schema";
+import type { DayLog, Challenge } from "@shared/schema";
 
 type RouteParams = RouteProp<LogStackParamList, "NutritionLog">;
 
@@ -37,6 +38,13 @@ export default function NutritionLogScreen() {
   const [fat, setFat] = useState("");
   const [notes, setNotes] = useState("");
   const [isSkipped, setIsSkipped] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  
+  const challengeData = challenge as Challenge | undefined;
+  const targetCalories = challengeData?.targetCalories || 0;
+  const targetProtein = challengeData?.targetProteinGrams || 0;
+  const targetCarbs = challengeData?.targetCarbsGrams || 0;
+  const targetFat = challengeData?.targetFatGrams || 0;
 
   useEffect(() => {
     if (existingLog) {
@@ -71,11 +79,17 @@ export default function NutritionLogScreen() {
       } else {
         await createDayLog.mutateAsync(data);
       }
-      navigation.goBack();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowConfirmation(true);
+      setTimeout(() => {
+        navigation.goBack();
+      }, 800);
     } catch (error) {
       Alert.alert("Error", "Failed to save nutrition log");
     }
   };
+  
+  const caloriesDiff = calories && targetCalories ? parseInt(calories) - targetCalories : 0;
 
   const handleSkip = () => {
     setIsSkipped(!isSkipped);
@@ -120,7 +134,7 @@ export default function NutritionLogScreen() {
         <>
           <View style={styles.inputGroup}>
             <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
-              Calories
+              Calories {targetCalories > 0 ? `(Target: ${targetCalories})` : ""}
             </ThemedText>
             <TextInput
               style={[
@@ -139,6 +153,11 @@ export default function NutritionLogScreen() {
               onChangeText={setCalories}
               autoFocus
             />
+            {caloriesDiff > 0 && targetCalories > 0 ? (
+              <ThemedText style={[styles.targetHint, { color: theme.textSecondary }]}>
+                Above target by {caloriesDiff} cal
+              </ThemedText>
+            ) : null}
           </View>
 
           <View style={styles.macrosRow}>
@@ -161,6 +180,11 @@ export default function NutritionLogScreen() {
                 value={protein}
                 onChangeText={setProtein}
               />
+              {targetProtein > 0 ? (
+                <ThemedText style={[styles.macroHint, { color: theme.textSecondary }]}>
+                  Target: {targetProtein}g
+                </ThemedText>
+              ) : null}
             </View>
 
             <View style={styles.macroInput}>
@@ -182,6 +206,11 @@ export default function NutritionLogScreen() {
                 value={carbs}
                 onChangeText={setCarbs}
               />
+              {targetCarbs > 0 ? (
+                <ThemedText style={[styles.macroHint, { color: theme.textSecondary }]}>
+                  Target: {targetCarbs}g
+                </ThemedText>
+              ) : null}
             </View>
 
             <View style={styles.macroInput}>
@@ -203,6 +232,11 @@ export default function NutritionLogScreen() {
                 value={fat}
                 onChangeText={setFat}
               />
+              {targetFat > 0 ? (
+                <ThemedText style={[styles.macroHint, { color: theme.textSecondary }]}>
+                  Target: {targetFat}g
+                </ThemedText>
+              ) : null}
             </View>
           </View>
 
@@ -231,25 +265,34 @@ export default function NutritionLogScreen() {
         </>
       )}
 
-      <View style={styles.buttonContainer}>
-        <Pressable
-          style={[styles.skipButton, { borderColor: theme.border }]}
-          onPress={handleSkip}
-        >
-          <Feather name={isSkipped ? "edit-3" : "x"} size={20} color={theme.textSecondary} />
-          <ThemedText style={{ color: theme.textSecondary }}>
-            {isSkipped ? "Log Instead" : "Skip Day"}
+      {showConfirmation ? (
+        <View style={[styles.confirmationContainer, { backgroundColor: theme.success + "15" }]}>
+          <Feather name="check-circle" size={24} color={theme.success} />
+          <ThemedText style={[styles.confirmationText, { color: theme.success }]}>
+            Nutrition logged.
           </ThemedText>
-        </Pressable>
+        </View>
+      ) : (
+        <View style={styles.buttonContainer}>
+          <Pressable
+            style={[styles.skipButton, { borderColor: theme.border }]}
+            onPress={handleSkip}
+          >
+            <Feather name={isSkipped ? "edit-3" : "x"} size={20} color={theme.textSecondary} />
+            <ThemedText style={{ color: theme.textSecondary }}>
+              {isSkipped ? "Log Instead" : "Skip Day"}
+            </ThemedText>
+          </Pressable>
 
-        <Button
-          onPress={handleSave}
-          disabled={!isValid || isSaving}
-          style={styles.saveButton}
-        >
-          {isSaving ? "Saving..." : existingLog ? "Update" : "Save"}
-        </Button>
-      </View>
+          <Button
+            onPress={handleSave}
+            disabled={!isValid || isSaving}
+            style={styles.saveButton}
+          >
+            {isSaving ? "Saving..." : existingLog ? "Update" : "Save"}
+          </Button>
+        </View>
+      )}
     </KeyboardAwareScrollViewCompat>
   );
 }
@@ -296,9 +339,32 @@ const styles = StyleSheet.create({
   macroInput: {
     flex: 1,
   },
+  targetHint: {
+    ...Typography.footnote,
+    marginTop: Spacing.xs,
+    textAlign: "center",
+  },
+  macroHint: {
+    ...Typography.caption,
+    marginTop: Spacing.xs,
+    textAlign: "center",
+  },
   notesInput: {
     height: 100,
     paddingTop: Spacing.md,
+  },
+  confirmationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    marginTop: "auto",
+  },
+  confirmationText: {
+    ...Typography.headline,
+    fontWeight: "600",
   },
   skippedContainer: {
     alignItems: "center",
