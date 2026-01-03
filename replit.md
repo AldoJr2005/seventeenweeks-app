@@ -1,10 +1,10 @@
-# 17-Week Weight Loss Challenge
+# 17 WEEKS
 
 ## Overview
 
 A native iOS mobile app built with Expo (React Native) for tracking a 17-week weight loss challenge. The app provides daily logging for nutrition, workouts, and habits, along with weekly progress photos and weigh-ins. It features an Apple-style minimalist design with streak tracking, compliance scoring, and progress visualization.
 
-The app is single-user focused (MVP) with local password protection, designed to be private and motivational without gamification noise.
+The app supports multiple user accounts with local PIN protection, designed to be private and motivational without gamification noise.
 
 ## User Preferences
 
@@ -39,11 +39,17 @@ Core entities stored in PostgreSQL:
 - **appSettings**: App-wide configuration
 
 ### Authentication & Security
-- Single-user model with local password protection
+- Multi-account support with local PIN protection
 - Password hashing via expo-crypto (SHA-256)
 - Session management with expo-secure-store (native) or sessionStorage (web)
 - Auto-lock functionality with configurable timeout
+- Email/phone recovery contact info for PIN reset (stored in userProfiles)
 - No external auth providers (local-only for MVP)
+
+### Theme Support
+- Light/dark/system theme toggle stored persistently
+- ThemeContext provides effectiveTheme throughout the app
+- Signature Easter egg at bottom of Login and Settings screens (white in dark mode, black in light mode)
 
 ### Key Design Decisions
 
