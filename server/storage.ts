@@ -1,38 +1,205 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import {
+  challenges, dayLogs, workoutLogs, weeklyPhotos, weeklyCheckIns, habitLogs, reminderLogs, appSettings,
+  type Challenge, type InsertChallenge,
+  type DayLog, type InsertDayLog,
+  type WorkoutLog, type InsertWorkoutLog,
+  type WeeklyPhoto, type InsertWeeklyPhoto,
+  type WeeklyCheckIn, type InsertWeeklyCheckIn,
+  type HabitLog, type InsertHabitLog,
+  type ReminderLog, type InsertReminderLog,
+  type AppSettings, type InsertAppSettings,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  // Challenge
+  getChallenge(): Promise<Challenge | undefined>;
+  createChallenge(challenge: InsertChallenge): Promise<Challenge>;
+  updateChallenge(id: string, challenge: Partial<InsertChallenge>): Promise<Challenge | undefined>;
+  
+  // Day Logs (nutrition)
+  getDayLog(date: string): Promise<DayLog | undefined>;
+  getDayLogs(challengeId: string): Promise<DayLog[]>;
+  createDayLog(dayLog: InsertDayLog): Promise<DayLog>;
+  updateDayLog(id: string, dayLog: Partial<InsertDayLog>): Promise<DayLog | undefined>;
+  
+  // Workout Logs
+  getWorkoutLog(date: string): Promise<WorkoutLog | undefined>;
+  getWorkoutLogs(challengeId: string): Promise<WorkoutLog[]>;
+  createWorkoutLog(workoutLog: InsertWorkoutLog): Promise<WorkoutLog>;
+  updateWorkoutLog(id: string, workoutLog: Partial<InsertWorkoutLog>): Promise<WorkoutLog | undefined>;
+  
+  // Weekly Photos
+  getWeeklyPhoto(weekNumber: number): Promise<WeeklyPhoto | undefined>;
+  getWeeklyPhotos(challengeId: string): Promise<WeeklyPhoto[]>;
+  createWeeklyPhoto(photo: InsertWeeklyPhoto): Promise<WeeklyPhoto>;
+  updateWeeklyPhoto(id: string, photo: Partial<InsertWeeklyPhoto>): Promise<WeeklyPhoto | undefined>;
+  
+  // Weekly Check-ins
+  getWeeklyCheckIn(weekNumber: number): Promise<WeeklyCheckIn | undefined>;
+  getWeeklyCheckIns(challengeId: string): Promise<WeeklyCheckIn[]>;
+  createWeeklyCheckIn(checkIn: InsertWeeklyCheckIn): Promise<WeeklyCheckIn>;
+  updateWeeklyCheckIn(id: string, checkIn: Partial<InsertWeeklyCheckIn>): Promise<WeeklyCheckIn | undefined>;
+  
+  // Habit Logs
+  getHabitLog(date: string): Promise<HabitLog | undefined>;
+  getHabitLogs(challengeId: string): Promise<HabitLog[]>;
+  createHabitLog(habitLog: InsertHabitLog): Promise<HabitLog>;
+  updateHabitLog(id: string, habitLog: Partial<InsertHabitLog>): Promise<HabitLog | undefined>;
+  
+  // Reminder Logs
+  getReminderLogs(challengeId: string): Promise<ReminderLog[]>;
+  createReminderLog(reminderLog: InsertReminderLog): Promise<ReminderLog>;
+  
+  // App Settings
+  getAppSettings(): Promise<AppSettings | undefined>;
+  createAppSettings(settings: InsertAppSettings): Promise<AppSettings>;
+  updateAppSettings(id: string, settings: Partial<InsertAppSettings>): Promise<AppSettings | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  // Challenge
+  async getChallenge(): Promise<Challenge | undefined> {
+    const [challenge] = await db.select().from(challenges).limit(1);
+    return challenge || undefined;
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+  async createChallenge(challenge: InsertChallenge): Promise<Challenge> {
+    const [created] = await db.insert(challenges).values(challenge).returning();
+    return created;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+  async updateChallenge(id: string, challenge: Partial<InsertChallenge>): Promise<Challenge | undefined> {
+    const [updated] = await db.update(challenges).set(challenge).where(eq(challenges.id, id)).returning();
+    return updated || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  // Day Logs
+  async getDayLog(date: string): Promise<DayLog | undefined> {
+    const [log] = await db.select().from(dayLogs).where(eq(dayLogs.date, date));
+    return log || undefined;
+  }
+
+  async getDayLogs(challengeId: string): Promise<DayLog[]> {
+    return db.select().from(dayLogs).where(eq(dayLogs.challengeId, challengeId)).orderBy(desc(dayLogs.date));
+  }
+
+  async createDayLog(dayLog: InsertDayLog): Promise<DayLog> {
+    const [created] = await db.insert(dayLogs).values(dayLog).returning();
+    return created;
+  }
+
+  async updateDayLog(id: string, dayLog: Partial<InsertDayLog>): Promise<DayLog | undefined> {
+    const [updated] = await db.update(dayLogs).set({ ...dayLog, updatedAt: new Date() }).where(eq(dayLogs.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Workout Logs
+  async getWorkoutLog(date: string): Promise<WorkoutLog | undefined> {
+    const [log] = await db.select().from(workoutLogs).where(eq(workoutLogs.date, date));
+    return log || undefined;
+  }
+
+  async getWorkoutLogs(challengeId: string): Promise<WorkoutLog[]> {
+    return db.select().from(workoutLogs).where(eq(workoutLogs.challengeId, challengeId)).orderBy(desc(workoutLogs.date));
+  }
+
+  async createWorkoutLog(workoutLog: InsertWorkoutLog): Promise<WorkoutLog> {
+    const [created] = await db.insert(workoutLogs).values(workoutLog).returning();
+    return created;
+  }
+
+  async updateWorkoutLog(id: string, workoutLog: Partial<InsertWorkoutLog>): Promise<WorkoutLog | undefined> {
+    const [updated] = await db.update(workoutLogs).set({ ...workoutLog, updatedAt: new Date() }).where(eq(workoutLogs.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Weekly Photos
+  async getWeeklyPhoto(weekNumber: number): Promise<WeeklyPhoto | undefined> {
+    const [photo] = await db.select().from(weeklyPhotos).where(eq(weeklyPhotos.weekNumber, weekNumber));
+    return photo || undefined;
+  }
+
+  async getWeeklyPhotos(challengeId: string): Promise<WeeklyPhoto[]> {
+    return db.select().from(weeklyPhotos).where(eq(weeklyPhotos.challengeId, challengeId)).orderBy(asc(weeklyPhotos.weekNumber));
+  }
+
+  async createWeeklyPhoto(photo: InsertWeeklyPhoto): Promise<WeeklyPhoto> {
+    const [created] = await db.insert(weeklyPhotos).values(photo).returning();
+    return created;
+  }
+
+  async updateWeeklyPhoto(id: string, photo: Partial<InsertWeeklyPhoto>): Promise<WeeklyPhoto | undefined> {
+    const [updated] = await db.update(weeklyPhotos).set(photo).where(eq(weeklyPhotos.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Weekly Check-ins
+  async getWeeklyCheckIn(weekNumber: number): Promise<WeeklyCheckIn | undefined> {
+    const [checkIn] = await db.select().from(weeklyCheckIns).where(eq(weeklyCheckIns.weekNumber, weekNumber));
+    return checkIn || undefined;
+  }
+
+  async getWeeklyCheckIns(challengeId: string): Promise<WeeklyCheckIn[]> {
+    return db.select().from(weeklyCheckIns).where(eq(weeklyCheckIns.challengeId, challengeId)).orderBy(asc(weeklyCheckIns.weekNumber));
+  }
+
+  async createWeeklyCheckIn(checkIn: InsertWeeklyCheckIn): Promise<WeeklyCheckIn> {
+    const [created] = await db.insert(weeklyCheckIns).values(checkIn).returning();
+    return created;
+  }
+
+  async updateWeeklyCheckIn(id: string, checkIn: Partial<InsertWeeklyCheckIn>): Promise<WeeklyCheckIn | undefined> {
+    const [updated] = await db.update(weeklyCheckIns).set({ ...checkIn, updatedAt: new Date() }).where(eq(weeklyCheckIns.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Habit Logs
+  async getHabitLog(date: string): Promise<HabitLog | undefined> {
+    const [log] = await db.select().from(habitLogs).where(eq(habitLogs.date, date));
+    return log || undefined;
+  }
+
+  async getHabitLogs(challengeId: string): Promise<HabitLog[]> {
+    return db.select().from(habitLogs).where(eq(habitLogs.challengeId, challengeId)).orderBy(desc(habitLogs.date));
+  }
+
+  async createHabitLog(habitLog: InsertHabitLog): Promise<HabitLog> {
+    const [created] = await db.insert(habitLogs).values(habitLog).returning();
+    return created;
+  }
+
+  async updateHabitLog(id: string, habitLog: Partial<InsertHabitLog>): Promise<HabitLog | undefined> {
+    const [updated] = await db.update(habitLogs).set({ ...habitLog, updatedAt: new Date() }).where(eq(habitLogs.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Reminder Logs
+  async getReminderLogs(challengeId: string): Promise<ReminderLog[]> {
+    return db.select().from(reminderLogs).where(eq(reminderLogs.challengeId, challengeId)).orderBy(desc(reminderLogs.createdAt));
+  }
+
+  async createReminderLog(reminderLog: InsertReminderLog): Promise<ReminderLog> {
+    const [created] = await db.insert(reminderLogs).values(reminderLog).returning();
+    return created;
+  }
+
+  // App Settings
+  async getAppSettings(): Promise<AppSettings | undefined> {
+    const [settings] = await db.select().from(appSettings).limit(1);
+    return settings || undefined;
+  }
+
+  async createAppSettings(settings: InsertAppSettings): Promise<AppSettings> {
+    const [created] = await db.insert(appSettings).values(settings).returning();
+    return created;
+  }
+
+  async updateAppSettings(id: string, settings: Partial<InsertAppSettings>): Promise<AppSettings | undefined> {
+    const [updated] = await db.update(appSettings).set({ ...settings, updatedAt: new Date() }).where(eq(appSettings.id, id)).returning();
+    return updated || undefined;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

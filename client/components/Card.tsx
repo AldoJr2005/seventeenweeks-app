@@ -9,7 +9,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius } from "@/constants/theme";
+import { Spacing, BorderRadius, CardShadow } from "@/constants/theme";
 
 interface CardProps {
   elevation?: number;
@@ -25,7 +25,6 @@ const springConfig: WithSpringConfig = {
   mass: 0.3,
   stiffness: 150,
   overshootClamping: true,
-  energyThreshold: 0.001,
 };
 
 const getBackgroundColorForElevation = (
@@ -34,7 +33,7 @@ const getBackgroundColorForElevation = (
 ): string => {
   switch (elevation) {
     case 1:
-      return theme.backgroundDefault;
+      return theme.cardBackground || theme.backgroundDefault;
     case 2:
       return theme.backgroundSecondary;
     case 3:
@@ -64,11 +63,15 @@ export function Card({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.98, springConfig);
+    if (onPress) {
+      scale.value = withSpring(0.98, springConfig);
+    }
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, springConfig);
+    if (onPress) {
+      scale.value = withSpring(1, springConfig);
+    }
   };
 
   return (
@@ -76,22 +79,24 @@ export function Card({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      disabled={!onPress}
       style={[
         styles.card,
         {
           backgroundColor: cardBackgroundColor,
+          ...CardShadow,
         },
         animatedStyle,
         style,
       ]}
     >
       {title ? (
-        <ThemedText type="h4" style={styles.cardTitle}>
+        <ThemedText type="headline" style={styles.cardTitle}>
           {title}
         </ThemedText>
       ) : null}
       {description ? (
-        <ThemedText type="small" style={styles.cardDescription}>
+        <ThemedText type="subheadline" style={styles.cardDescription}>
           {description}
         </ThemedText>
       ) : null}
@@ -102,8 +107,8 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    padding: Spacing.xl,
-    borderRadius: BorderRadius["2xl"],
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
   },
   cardTitle: {
     marginBottom: Spacing.sm,
