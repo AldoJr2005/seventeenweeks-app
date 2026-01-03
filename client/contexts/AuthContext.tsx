@@ -15,6 +15,7 @@ interface AuthContextType {
   resetApp: () => Promise<void>;
   startNewAccount: () => void;
   refreshAuth: () => void;
+  goToLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -104,6 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setWantsNewAccount(false);
   }, [refetch]);
 
+  const goToLogin = useCallback(() => {
+    setWantsNewAccount(false);
+    setIsLoggedOut(true);
+  }, []);
+
   const isLoading = profileLoading || checkingSession;
   const needsSetup = !profileLoading && (!profile || wantsNewAccount);
 
@@ -121,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resetApp,
         startNewAccount,
         refreshAuth,
+        goToLogin,
       }}
     >
       {children}

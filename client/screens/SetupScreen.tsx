@@ -72,7 +72,7 @@ export default function SetupScreen() {
   const createProfile = useCreateProfile();
   const createChallenge = useCreateChallenge();
   const createBaseline = useCreateBaselineSnapshot();
-  const { refreshAuth, profile } = useAuth();
+  const { goToLogin, profile } = useAuth();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -472,16 +472,14 @@ export default function SetupScreen() {
               />
             </View>
 
-            {profile ? (
-              <Pressable style={styles.loginLink} onPress={() => refreshAuth()}>
-                <ThemedText style={[styles.loginLinkText, { color: theme.textSecondary }]}>
-                  Already have an account?{" "}
-                </ThemedText>
-                <ThemedText style={[styles.loginLinkText, { color: theme.primary }]}>
-                  Login
-                </ThemedText>
-              </Pressable>
-            ) : null}
+            <Pressable style={styles.loginLink} onPress={goToLogin}>
+              <ThemedText style={[styles.loginLinkText, { color: theme.textSecondary }]}>
+                Already have an account?{" "}
+              </ThemedText>
+              <ThemedText style={[styles.loginLinkText, { color: theme.primary }]}>
+                Login
+              </ThemedText>
+            </Pressable>
           </View>
         );
 
