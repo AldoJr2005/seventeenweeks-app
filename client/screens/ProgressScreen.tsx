@@ -138,19 +138,31 @@ export default function ProgressScreen() {
 
             <View style={styles.chartPlaceholder}>
               <View style={[styles.chartLine, { backgroundColor: theme.border }]}>
-                {sortedCheckIns.map((checkIn, index) => (
-                  <View
-                    key={checkIn.id}
-                    style={[
-                      styles.chartDot,
-                      { 
-                        backgroundColor: theme.primary,
-                        left: `${(index / Math.max(sortedCheckIns.length - 1, 1)) * 100}%`,
-                        bottom: `${checkIn.weight ? ((startWeight - checkIn.weight) / startWeight) * 100 + 50 : 50}%`
-                      }
-                    ]}
-                  />
-                ))}
+                {(() => {
+                  const weights = sortedCheckIns.map(c => c.weight || startWeight);
+                  const maxWeight = Math.max(startWeight, ...weights);
+                  const minWeight = Math.min(...weights);
+                  const range = maxWeight - minWeight || 1;
+                  
+                  return sortedCheckIns.map((checkIn, index) => {
+                    const weight = checkIn.weight || startWeight;
+                    const normalizedY = ((maxWeight - weight) / range) * 80 + 10;
+                    
+                    return (
+                      <View
+                        key={checkIn.id}
+                        style={[
+                          styles.chartDot,
+                          { 
+                            backgroundColor: theme.primary,
+                            left: `${(index / Math.max(sortedCheckIns.length - 1, 1)) * 100}%`,
+                            bottom: `${normalizedY}%`
+                          }
+                        ]}
+                      />
+                    );
+                  });
+                })()}
               </View>
               <View style={styles.chartLabels}>
                 <ThemedText style={[styles.chartLabel, { color: theme.textSecondary }]}>Week 1</ThemedText>
