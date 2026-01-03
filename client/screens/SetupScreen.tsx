@@ -80,6 +80,8 @@ export default function SetupScreen() {
 
   const [username, setUsername] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [age, setAge] = useState("");
   const [sex, setSex] = useState<"male" | "female" | "">("");
   const [heightFeet, setHeightFeet] = useState("");
@@ -176,9 +178,13 @@ export default function SetupScreen() {
     return { protein, carbs, fat };
   }, [targetCalories, macroPreset]);
 
+  const isEmailValid = email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isPhoneValid = phone.trim().length === 0 || /^[\d\s\-+()]{7,20}$/.test(phone.trim());
+  const hasRecoveryMethod = email.trim().length > 0 || phone.trim().length > 0;
   const isStep1Valid = username.trim().length >= 3 && name.trim().length > 0 && age.trim().length > 0 && sex !== "" &&
     !!(heightUnit === "ft" ? (heightFeet || heightInches) : heightCm) &&
-    currentWeight.trim().length > 0 && password.length >= 4 && password === confirmPassword;
+    currentWeight.trim().length > 0 && password.length >= 4 && password === confirmPassword &&
+    hasRecoveryMethod && isEmailValid && isPhoneValid;
   const isStep2Valid = goalWeight.trim().length > 0;
   const isStep3Valid = activityLevel !== "" && deficitLevel !== "" && targetCalories > 0;
   const isStep4Valid = macroPreset !== "" && targetCalories > 0;
@@ -249,6 +255,8 @@ export default function SetupScreen() {
       const profile = await createProfile.mutateAsync({
         username: username.trim().toLowerCase(),
         name: name.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
         heightValue,
         heightUnit,
         weightUnit,
@@ -470,6 +478,31 @@ export default function SetupScreen() {
                 value={confirmPassword}
                 onChangeText={(t) => { setConfirmPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
               />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Recovery Contact (for PIN reset)</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: email && !isEmailValid ? theme.warning : theme.border }]}
+                placeholder="Email address"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={email}
+                onChangeText={setEmail}
+              />
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: phone && !isPhoneValid ? theme.warning : theme.border }]}
+                placeholder="Phone number"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="phone-pad"
+                value={phone}
+                onChangeText={setPhone}
+              />
+              <ThemedText style={[styles.inputHint, { color: theme.textSecondary }]}>
+                Enter at least one to reset your PIN if you forget it
+              </ThemedText>
             </View>
 
             <Pressable style={styles.loginLink} onPress={goToLogin}>
@@ -979,6 +1012,10 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...Typography.subheadline,
+  },
+  inputHint: {
+    ...Typography.footnote,
+    marginTop: Spacing.xs,
   },
   labelRow: {
     flexDirection: "row",

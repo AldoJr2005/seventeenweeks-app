@@ -140,6 +140,8 @@ export const userProfiles = pgTable("user_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: varchar("username", { length: 50 }),
   name: text("name").notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 20 }),
   heightValue: real("height_value").notNull(),
   heightUnit: varchar("height_unit", { length: 10 }).notNull().default("ft"),
   weightUnit: varchar("weight_unit", { length: 10 }).notNull().default("lbs"),

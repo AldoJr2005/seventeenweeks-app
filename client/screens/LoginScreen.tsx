@@ -21,7 +21,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showResetModal, setShowResetModal] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"recovery" | "reset">("recovery");
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [showNewAccountModal, setShowNewAccountModal] = useState(false);
   const [newAccountConfirmText, setNewAccountConfirmText] = useState("");
@@ -74,8 +75,33 @@ export default function LoginScreen() {
     if (resetConfirmText.toLowerCase() !== "reset") return;
     
     await resetApp();
-    setShowResetModal(false);
+    setShowForgotModal(false);
+    setForgotStep("recovery");
     setResetConfirmText("");
+  };
+
+  const openForgotModal = () => {
+    setForgotStep(profile?.email || profile?.phone ? "recovery" : "reset");
+    setShowForgotModal(true);
+  };
+
+  const closeForgotModal = () => {
+    setShowForgotModal(false);
+    setForgotStep("recovery");
+    setResetConfirmText("");
+  };
+
+  const maskEmail = (email: string) => {
+    const [local, domain] = email.split("@");
+    if (!domain) return email;
+    const masked = local.length > 2 ? local[0] + "*".repeat(local.length - 2) + local[local.length - 1] : local;
+    return `${masked}@${domain}`;
+  };
+
+  const maskPhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 4) return phone;
+    return "*".repeat(digits.length - 4) + digits.slice(-4);
   };
 
   const handleNewAccount = async () => {
@@ -127,7 +153,7 @@ export default function LoginScreen() {
               {isLoading ? <ActivityIndicator color="#FFF" /> : "Unlock"}
             </Button>
 
-            <Pressable style={styles.forgotButton} onPress={() => setShowResetModal(true)}>
+            <Pressable style={styles.forgotButton} onPress={openForgotModal}>
               <ThemedText style={[styles.forgotText, { color: theme.textSecondary }]}>
                 Forgot PIN?
               </ThemedText>
@@ -204,36 +230,80 @@ export default function LoginScreen() {
         </>
       )}
 
-      <Modal visible={showResetModal} transparent animationType="fade">
+      <Modal visible={showForgotModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            <ThemedText style={styles.modalTitle}>Reset App?</ThemedText>
-            <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
-              This will delete all your data including your profile, challenge progress, photos, and logs. This cannot be undone.
-            </ThemedText>
-            <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
-              Type "reset" to confirm:
-            </ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-              placeholder="Type 'reset'"
-              placeholderTextColor={theme.textSecondary}
-              value={resetConfirmText}
-              onChangeText={setResetConfirmText}
-              autoCapitalize="none"
-            />
-            <View style={styles.modalButtons}>
-              <Pressable style={styles.cancelButton} onPress={() => { setShowResetModal(false); setResetConfirmText(""); }}>
-                <ThemedText style={{ color: theme.primary }}>Cancel</ThemedText>
-              </Pressable>
-              <Button
-                onPress={handleReset}
-                disabled={resetConfirmText.toLowerCase() !== "reset"}
-                style={[styles.resetButton, { backgroundColor: "#FF3B30" }]}
-              >
-                Reset Everything
-              </Button>
-            </View>
+            {forgotStep === "recovery" && (profile?.email || profile?.phone) ? (
+              <>
+                <ThemedText style={styles.modalTitle}>Forgot PIN?</ThemedText>
+                <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
+                  Contact recovery information on file:
+                </ThemedText>
+                
+                {profile.email ? (
+                  <View style={styles.recoveryItem}>
+                    <Feather name="mail" size={18} color={theme.textSecondary} />
+                    <ThemedText style={[styles.recoveryValue, { color: theme.text }]}>
+                      {maskEmail(profile.email)}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                
+                {profile.phone ? (
+                  <View style={styles.recoveryItem}>
+                    <Feather name="phone" size={18} color={theme.textSecondary} />
+                    <ThemedText style={[styles.recoveryValue, { color: theme.text }]}>
+                      {maskPhone(profile.phone)}
+                    </ThemedText>
+                  </View>
+                ) : null}
+                
+                <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
+                  Use one of these to verify your identity and reset your PIN on a trusted device.
+                </ThemedText>
+                
+                <View style={styles.modalButtons}>
+                  <Pressable style={styles.cancelButton} onPress={closeForgotModal}>
+                    <ThemedText style={{ color: theme.primary }}>Close</ThemedText>
+                  </Pressable>
+                  <Pressable style={styles.resetLinkButton} onPress={() => setForgotStep("reset")}>
+                    <ThemedText style={[styles.resetLinkText, { color: "#FF3B30" }]}>
+                      Reset App Instead
+                    </ThemedText>
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <ThemedText style={styles.modalTitle}>Reset App?</ThemedText>
+                <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
+                  This will delete all your data including your profile, challenge progress, photos, and logs. This cannot be undone.
+                </ThemedText>
+                <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
+                  Type "reset" to confirm:
+                </ThemedText>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+                  placeholder="Type 'reset'"
+                  placeholderTextColor={theme.textSecondary}
+                  value={resetConfirmText}
+                  onChangeText={setResetConfirmText}
+                  autoCapitalize="none"
+                />
+                <View style={styles.modalButtons}>
+                  <Pressable style={styles.cancelButton} onPress={closeForgotModal}>
+                    <ThemedText style={{ color: theme.primary }}>Cancel</ThemedText>
+                  </Pressable>
+                  <Button
+                    onPress={handleReset}
+                    disabled={resetConfirmText.toLowerCase() !== "reset"}
+                    style={[styles.resetButton, { backgroundColor: "#FF3B30" }]}
+                  >
+                    Reset Everything
+                  </Button>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -367,6 +437,26 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     flex: 1,
+  },
+  recoveryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  recoveryValue: {
+    ...Typography.body,
+    fontFamily: "monospace",
+  },
+  resetLinkButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+  },
+  resetLinkText: {
+    ...Typography.footnote,
+    fontWeight: "500",
   },
   dividerContainer: {
     flexDirection: "row",
