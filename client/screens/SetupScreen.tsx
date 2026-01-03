@@ -235,7 +235,7 @@ export default function SetupScreen() {
         passwordHash,
         requirePasswordOnOpen: true,
         autoLockMinutes: 5,
-        onboardingComplete: true,
+        onboardingComplete: false,
       });
 
       const challenge = await createChallenge.mutateAsync({
@@ -263,14 +263,19 @@ export default function SetupScreen() {
         smartReminders: true,
       });
 
-      await createBaseline.mutateAsync({
-        challengeId: challenge.id,
-        baselineWeight: weightValue,
-        baselinePhotoUri: baselinePhoto,
-        typicalSteps: finalStepGoal - 2000,
-        workoutsPerWeek,
-      });
+      try {
+        await createBaseline.mutateAsync({
+          challengeId: challenge.id,
+          baselineWeight: weightValue,
+          baselinePhotoUri: baselinePhoto,
+          typicalSteps: finalStepGoal - 2000,
+          workoutsPerWeek,
+        });
+      } catch (baselineErr) {
+        console.warn("Baseline snapshot creation failed (non-critical):", baselineErr);
+      }
 
+      await api.profile.update(profile.id, { onboardingComplete: true });
       await setSessionUnlocked(true);
       refreshAuth();
     } catch (err: any) {

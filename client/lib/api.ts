@@ -8,6 +8,7 @@ import type {
   HabitLog, InsertHabitLog,
   UserProfile, InsertUserProfile,
   AppSettings, InsertAppSettings,
+  BaselineSnapshot, InsertBaselineSnapshot,
 } from "@shared/schema";
 
 const BASE_URL = getApiUrl();
@@ -82,5 +83,11 @@ export const api = {
     update: (id: string, data: Partial<InsertUserProfile>) => apiRequest<UserProfile>("PATCH", `/api/profile/${id}`, data),
     delete: (id: string) => apiRequest<void>("DELETE", `/api/profile/${id}`),
     verifyPassword: (passwordHash: string) => apiRequest<{ valid: boolean }>("POST", "/api/profile/verify-password", { passwordHash }),
+  },
+
+  baselineSnapshots: {
+    get: (challengeId: string) => fetchApi<BaselineSnapshot | null>(`/api/baseline/${challengeId}`),
+    create: (data: InsertBaselineSnapshot) => apiRequest<BaselineSnapshot>("POST", "/api/baseline", data),
+    update: (id: string, data: Partial<InsertBaselineSnapshot>) => apiRequest<BaselineSnapshot>("PATCH", `/api/baseline/${id}`, data),
   },
 };
