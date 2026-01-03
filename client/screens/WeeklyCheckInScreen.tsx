@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, Image } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, Image, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -87,6 +88,38 @@ export default function WeeklyCheckInScreen() {
     }
   };
 
+  const copyImageToPermanentLocation = async (uri: string): Promise<string> => {
+    if (Platform.OS === "web") {
+      return uri;
+    }
+    
+    try {
+      const uriLower = uri.toLowerCase();
+      let ext = "jpg";
+      if (uriLower.includes(".png")) ext = "png";
+      else if (uriLower.includes(".heic")) ext = "heic";
+      else if (uriLower.includes(".heif")) ext = "heif";
+      else if (uriLower.includes(".webp")) ext = "webp";
+      else if (uriLower.includes(".gif")) ext = "gif";
+      
+      const filename = `week_${weekNumber}_photo_${Date.now()}.${ext}`;
+      const photosDir = `${FileSystem.documentDirectory}photos/`;
+      
+      const dirInfo = await FileSystem.getInfoAsync(photosDir);
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(photosDir, { intermediates: true });
+      }
+      
+      const permanentUri = `${photosDir}${filename}`;
+      await FileSystem.copyAsync({ from: uri, to: permanentUri });
+      
+      return permanentUri;
+    } catch (error) {
+      console.log("Failed to copy image to permanent location:", error);
+      return uri;
+    }
+  };
+
   const handleSave = async () => {
     if (!challenge) return;
 
@@ -95,11 +128,12 @@ export default function WeeklyCheckInScreen() {
 
     try {
       if (photoUri && !existingPhoto) {
+        const permanentUri = await copyImageToPermanentLocation(photoUri);
         await createPhoto.mutateAsync({
           challengeId: challenge.id,
           weekNumber,
           mondayDate,
-          imageUri: photoUri,
+          imageUri: permanentUri,
           isLate,
         });
       }
