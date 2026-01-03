@@ -1,8 +1,8 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import type { Challenge, DayLog, WorkoutLog, WeeklyPhoto, WeeklyCheckIn, HabitLog, UserProfile } from "@shared/schema";
+import { getPhotoBase64ForPDF } from "@/lib/photo-storage";
 
 interface WeekData {
   weekNumber: number;
@@ -47,55 +47,9 @@ function hasWeekData(week: WeekData): boolean {
 }
 
 async function convertImageToBase64(uri: string): Promise<string | null> {
-  try {
-    if (!uri) return null;
-    
-    // Already a data URI
-    if (uri.startsWith("data:")) return uri;
-    
-    // Web platform - use fetch and FileReader
-    if (Platform.OS === "web") {
-      try {
-        const response = await fetch(uri);
-        if (!response.ok) return null;
-        const blob = await response.blob();
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
-        });
-      } catch (e) {
-        console.log("Web fetch failed for image:", e);
-        return null;
-      }
-    }
-    
-    // Native platform - use expo-file-system
-    // Check if file exists first
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (!fileInfo.exists) {
-      console.log("Image file does not exist:", uri);
-      return null;
-    }
-    
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    
-    // Determine MIME type from URI extension
-    const uriLower = uri.toLowerCase();
-    let mimeType = "image/jpeg";
-    if (uriLower.includes(".png")) mimeType = "image/png";
-    else if (uriLower.includes(".gif")) mimeType = "image/gif";
-    else if (uriLower.includes(".webp")) mimeType = "image/webp";
-    else if (uriLower.includes(".heic") || uriLower.includes(".heif")) mimeType = "image/heic";
-    
-    return `data:${mimeType};base64,${base64}`;
-  } catch (error) {
-    console.log("Failed to convert image to base64:", error);
-    return null;
-  }
+  if (!uri) return null;
+  if (uri.startsWith("data:")) return uri;
+  return getPhotoBase64ForPDF(uri);
 }
 
 function generateStyles(): string {

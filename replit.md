@@ -49,7 +49,12 @@ Core entities stored in PostgreSQL:
 
 **Challenge Structure**: Weeks start on Monday, aligned with the 17-week program structure. Users cannot log data before their challenge start date.
 
-**Photo Storage**: Weekly photos stored as base64 URIs in the database. Future enhancement could use object storage for better performance.
+**Photo Storage**: Weekly photos are now stored permanently in `FileSystem.documentDirectory/weeklyPhotos/{challengeId}/week-{weekNumber}.{ext}`. The photo-storage utility (`client/lib/photo-storage.ts`) handles:
+- Permanent storage with compression (resize to 1200px height, 70% JPEG quality)
+- Photo status checking (available/missing/none) for both local files and remote URLs
+- Automatic detection of missing photos with re-upload UI prompts
+- Base64 conversion for PDF export with proper MIME type detection
+- Support for legacy remote URLs (http/https) that don't require FileSystem checks
 
 **Offline Considerations**: React Query caching provides some offline capability. Full offline-first sync not implemented in MVP.
 

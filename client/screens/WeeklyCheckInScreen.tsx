@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, Image, Platform } from "react-native";
+import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system/legacy";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -13,8 +12,9 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useChallenge } from "@/hooks/useChallenge";
-import { useWeeklyPhotos, useWeeklyCheckIns, useCreateWeeklyPhoto, useCreateWeeklyCheckIn, useUpdateWeeklyCheckIn } from "@/hooks/useWeeklyData";
+import { useWeeklyPhotos, useWeeklyCheckIns, useCreateWeeklyPhoto, useCreateWeeklyCheckIn, useUpdateWeeklyCheckIn, useUpdateWeeklyPhoto } from "@/hooks/useWeeklyData";
 import { getMondayDateForWeek, isMonday, getToday } from "@/lib/date-utils";
+import { savePhotoToPermanentStorage, getPhotoInfo, PhotoStatus } from "@/lib/photo-storage";
 import type { HomeStackParamList } from "@/navigation/HomeStackNavigator";
 import type { WeeklyPhoto, WeeklyCheckIn } from "@shared/schema";
 
@@ -36,8 +36,11 @@ export default function WeeklyCheckInScreen() {
 
   const existingPhoto = (weeklyPhotos as WeeklyPhoto[] | undefined)?.find(p => p.weekNumber === weekNumber);
   const existingCheckIn = (weeklyCheckIns as WeeklyCheckIn[] | undefined)?.find(c => c.weekNumber === weekNumber);
+  const updatePhoto = useUpdateWeeklyPhoto();
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoStatus, setPhotoStatus] = useState<PhotoStatus>("none");
+  const [isNewPhoto, setIsNewPhoto] = useState(false);
   const [weight, setWeight] = useState("");
   const [waist, setWaist] = useState("");
   const [hips, setHips] = useState("");
@@ -45,9 +48,24 @@ export default function WeeklyCheckInScreen() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    if (existingPhoto) {
-      setPhotoUri(existingPhoto.imageUri);
-    }
+    const checkExistingPhoto = async () => {
+      if (existingPhoto) {
+        const info = await getPhotoInfo(existingPhoto.imageUri);
+        setPhotoStatus(info.status);
+        if (info.status === "available") {
+          setPhotoUri(existingPhoto.imageUri);
+        } else {
+          setPhotoUri(null);
+        }
+        setIsNewPhoto(false);
+      } else {
+        setPhotoStatus("none");
+        setPhotoUri(null);
+        setIsNewPhoto(false);
+      }
+    };
+    checkExistingPhoto();
+    
     if (existingCheckIn) {
       setWeight(existingCheckIn.weight?.toString() || "");
       setWaist(existingCheckIn.waist?.toString() || "");
@@ -67,6 +85,8 @@ export default function WeeklyCheckInScreen() {
 
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
+      setIsNewPhoto(true);
+      setPhotoStatus("available");
     }
   };
 
@@ -85,38 +105,8 @@ export default function WeeklyCheckInScreen() {
 
     if (!result.canceled && result.assets[0]) {
       setPhotoUri(result.assets[0].uri);
-    }
-  };
-
-  const copyImageToPermanentLocation = async (uri: string): Promise<string> => {
-    if (Platform.OS === "web") {
-      return uri;
-    }
-    
-    try {
-      const uriLower = uri.toLowerCase();
-      let ext = "jpg";
-      if (uriLower.includes(".png")) ext = "png";
-      else if (uriLower.includes(".heic")) ext = "heic";
-      else if (uriLower.includes(".heif")) ext = "heif";
-      else if (uriLower.includes(".webp")) ext = "webp";
-      else if (uriLower.includes(".gif")) ext = "gif";
-      
-      const filename = `week_${weekNumber}_photo_${Date.now()}.${ext}`;
-      const photosDir = `${FileSystem.documentDirectory}photos/`;
-      
-      const dirInfo = await FileSystem.getInfoAsync(photosDir);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(photosDir, { intermediates: true });
-      }
-      
-      const permanentUri = `${photosDir}${filename}`;
-      await FileSystem.copyAsync({ from: uri, to: permanentUri });
-      
-      return permanentUri;
-    } catch (error) {
-      console.log("Failed to copy image to permanent location:", error);
-      return uri;
+      setIsNewPhoto(true);
+      setPhotoStatus("available");
     }
   };
 
@@ -127,15 +117,28 @@ export default function WeeklyCheckInScreen() {
     const isLate = !isMonday() && getToday() !== mondayDate;
 
     try {
-      if (photoUri && !existingPhoto) {
-        const permanentUri = await copyImageToPermanentLocation(photoUri);
-        await createPhoto.mutateAsync({
-          challengeId: challenge.id,
+      if (photoUri && isNewPhoto) {
+        const permanentUri = await savePhotoToPermanentStorage(
+          photoUri,
+          challenge.id,
           weekNumber,
-          mondayDate,
-          imageUri: permanentUri,
-          isLate,
-        });
+          true
+        );
+        
+        if (existingPhoto) {
+          await updatePhoto.mutateAsync({
+            id: existingPhoto.id,
+            data: { imageUri: permanentUri, isLate },
+          });
+        } else {
+          await createPhoto.mutateAsync({
+            challengeId: challenge.id,
+            weekNumber,
+            mondayDate,
+            imageUri: permanentUri,
+            isLate,
+          });
+        }
       }
 
       const checkInData = {
@@ -160,7 +163,7 @@ export default function WeeklyCheckInScreen() {
     }
   };
 
-  const isSaving = createPhoto.isPending || createCheckIn.isPending || updateCheckIn.isPending;
+  const isSaving = createPhoto.isPending || createCheckIn.isPending || updateCheckIn.isPending || updatePhoto.isPending;
   const unit = challenge?.unit || "lbs";
 
   return (
@@ -176,7 +179,32 @@ export default function WeeklyCheckInScreen() {
       <Card style={styles.section}>
         <ThemedText style={styles.sectionTitle}>Progress Photo</ThemedText>
         
-        {photoUri ? (
+        {photoStatus === "missing" && existingPhoto ? (
+          <View style={[styles.missingPhotoContainer, { backgroundColor: theme.backgroundSecondary }]}>
+            <View style={[styles.missingPhotoIcon, { backgroundColor: theme.warningBackground || theme.backgroundSecondary }]}>
+              <Feather name="alert-triangle" size={32} color={theme.warning} />
+            </View>
+            <ThemedText style={[styles.missingPhotoText, { color: theme.textSecondary }]}>
+              This photo is no longer available on this device
+            </ThemedText>
+            <View style={styles.reuploadButtons}>
+              <Pressable
+                style={[styles.reuploadButton, { backgroundColor: theme.primary }]}
+                onPress={handleTakePhoto}
+              >
+                <Feather name="camera" size={20} color="#FFF" />
+                <ThemedText style={styles.reuploadButtonText}>Re-take</ThemedText>
+              </Pressable>
+              <Pressable
+                style={[styles.reuploadButton, { backgroundColor: theme.primary }]}
+                onPress={handlePickImage}
+              >
+                <Feather name="image" size={20} color="#FFF" />
+                <ThemedText style={styles.reuploadButtonText}>Re-upload</ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        ) : photoUri ? (
           <Pressable onPress={handlePickImage} style={styles.photoPreview}>
             <Image source={{ uri: photoUri }} style={styles.photo} />
             <View style={[styles.photoOverlay, { backgroundColor: "rgba(0,0,0,0.3)" }]}>
@@ -400,6 +428,40 @@ const styles = StyleSheet.create({
   lateBadgeText: {
     color: "#FFF",
     fontSize: 12,
+    fontWeight: "600",
+  },
+  missingPhotoContainer: {
+    borderRadius: BorderRadius.md,
+    padding: Spacing.xl,
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  missingPhotoIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  missingPhotoText: {
+    ...Typography.body,
+    textAlign: "center",
+  },
+  reuploadButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  reuploadButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+  },
+  reuploadButtonText: {
+    color: "#FFF",
     fontWeight: "600",
   },
   inputGroup: {
