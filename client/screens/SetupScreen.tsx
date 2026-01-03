@@ -72,7 +72,7 @@ export default function SetupScreen() {
   const createProfile = useCreateProfile();
   const createChallenge = useCreateChallenge();
   const createBaseline = useCreateBaselineSnapshot();
-  const { refreshAuth } = useAuth();
+  const { refreshAuth, profile } = useAuth();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -456,6 +456,17 @@ export default function SetupScreen() {
                 onChangeText={(t) => { setConfirmPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
               />
             </View>
+
+            {profile ? (
+              <Pressable style={styles.loginLink} onPress={() => refreshAuth()}>
+                <ThemedText style={[styles.loginLinkText, { color: theme.textSecondary }]}>
+                  Already have an account?{" "}
+                </ThemedText>
+                <ThemedText style={[styles.loginLinkText, { color: theme.primary }]}>
+                  Login
+                </ThemedText>
+              </Pressable>
+            ) : null}
           </View>
         );
 
@@ -1188,5 +1199,14 @@ const styles = StyleSheet.create({
     ...Typography.footnote,
     textAlign: "center",
     marginTop: Spacing.md,
+  },
+  loginLink: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: Spacing.md,
+  },
+  loginLinkText: {
+    ...Typography.body,
   },
 });
