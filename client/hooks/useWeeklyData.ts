@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InsertWeeklyPhoto, InsertWeeklyCheckIn } from "@shared/schema";
+import type { WeeklyPhoto, WeeklyCheckIn, InsertWeeklyPhoto, InsertWeeklyCheckIn } from "@shared/schema";
 
 export function useWeeklyPhotos(challengeId: string | undefined) {
-  return useQuery({
+  return useQuery<WeeklyPhoto[]>({
     queryKey: ["/api/weekly-photos", challengeId],
     enabled: !!challengeId,
   });
@@ -32,7 +32,7 @@ export function useUpdateWeeklyPhoto() {
 }
 
 export function useWeeklyCheckIns(challengeId: string | undefined) {
-  return useQuery({
+  return useQuery<WeeklyCheckIn[]>({
     queryKey: ["/api/weekly-check-ins", challengeId],
     enabled: !!challengeId,
   });

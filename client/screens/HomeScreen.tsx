@@ -18,7 +18,7 @@ import { useDayLogs } from "@/hooks/useDayLogs";
 import { useWorkoutLogs } from "@/hooks/useWorkoutLogs";
 import { useHabitLogs } from "@/hooks/useHabitLogs";
 import { useWeeklyPhotos, useWeeklyCheckIns } from "@/hooks/useWeeklyData";
-import { getToday, getCurrentWeekNumber, isMonday, formatDisplayDate } from "@/lib/date-utils";
+import { getToday, getCurrentWeekNumber, getWeekNumber, isMonday, formatDisplayDate } from "@/lib/date-utils";
 import type { HomeStackParamList } from "@/navigation/HomeStackNavigator";
 import type { Challenge, DayLog, WorkoutLog, HabitLog, WeeklyPhoto, WeeklyCheckIn } from "@shared/schema";
 
@@ -77,12 +77,12 @@ export default function HomeScreen() {
   ].filter(Boolean).length;
 
   const weekDayLogs = (dayLogs as DayLog[] | undefined)?.filter(log => {
-    const logWeek = getCurrentWeekNumber(challenge.startDate);
+    const logWeek = getWeekNumber(challenge.startDate, log.date);
     return logWeek === currentWeek && !log.skipped;
   }) || [];
 
   const weekWorkouts = (workoutLogs as WorkoutLog[] | undefined)?.filter(log => {
-    const logWeek = getCurrentWeekNumber(challenge.startDate);
+    const logWeek = getWeekNumber(challenge.startDate, log.date);
     return logWeek === currentWeek && log.type !== "Rest";
   }) || [];
 

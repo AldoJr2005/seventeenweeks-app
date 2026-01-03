@@ -59,9 +59,11 @@ export default function ProgressScreen() {
   }
 
   const checkIns = (weeklyCheckIns as WeeklyCheckIn[] | undefined) || [];
+  const sortedCheckIns = [...checkIns].sort((a, b) => a.weekNumber - b.weekNumber);
   const currentWeek = getCurrentWeekNumber(challenge.startDate);
   const startWeight = challenge.startWeight;
-  const currentWeight = checkIns.length > 0 ? checkIns[checkIns.length - 1].weight : startWeight;
+  const latestCheckIn = sortedCheckIns.length > 0 ? sortedCheckIns[sortedCheckIns.length - 1] : null;
+  const currentWeight = latestCheckIn?.weight || startWeight;
   const weightChange = currentWeight ? currentWeight - startWeight : 0;
   const goalWeight = challenge.goalWeight;
 
@@ -136,14 +138,14 @@ export default function ProgressScreen() {
 
             <View style={styles.chartPlaceholder}>
               <View style={[styles.chartLine, { backgroundColor: theme.border }]}>
-                {checkIns.map((checkIn, index) => (
+                {sortedCheckIns.map((checkIn, index) => (
                   <View
                     key={checkIn.id}
                     style={[
                       styles.chartDot,
                       { 
                         backgroundColor: theme.primary,
-                        left: `${(index / Math.max(checkIns.length - 1, 1)) * 100}%`,
+                        left: `${(index / Math.max(sortedCheckIns.length - 1, 1)) * 100}%`,
                         bottom: `${checkIn.weight ? ((startWeight - checkIn.weight) / startWeight) * 100 + 50 : 50}%`
                       }
                     ]}

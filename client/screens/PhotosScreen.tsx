@@ -11,6 +11,7 @@ import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { useChallenge } from "@/hooks/useChallenge";
 import { useWeeklyPhotos } from "@/hooks/useWeeklyData";
+import { getApiUrl } from "@/lib/query-client";
 import type { ProgressStackParamList } from "@/navigation/ProgressStackNavigator";
 import type { WeeklyPhoto } from "@shared/schema";
 
@@ -38,6 +39,13 @@ export default function PhotosScreen() {
     return photos?.find(p => p.weekNumber === weekNumber);
   };
 
+  const getImageUri = (uri: string) => {
+    if (uri.startsWith('/assets/')) {
+      return `${getApiUrl()}${uri}`;
+    }
+    return uri;
+  };
+
   if (challengeLoading || photosLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot }]}>
@@ -60,7 +68,7 @@ export default function PhotosScreen() {
       >
         {photo ? (
           <View style={styles.photoContainer}>
-            <Image source={{ uri: photo.imageUri }} style={styles.photo} />
+            <Image source={{ uri: getImageUri(photo.imageUri) }} style={styles.photo} />
             {photo.isLate ? (
               <View style={[styles.lateBadge, { backgroundColor: theme.warning }]}>
                 <ThemedText style={styles.lateBadgeText}>Late</ThemedText>

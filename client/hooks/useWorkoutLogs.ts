@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InsertWorkoutLog } from "@shared/schema";
+import type { WorkoutLog, InsertWorkoutLog } from "@shared/schema";
 
 export function useWorkoutLogs(challengeId: string | undefined) {
-  return useQuery({
+  return useQuery<WorkoutLog[]>({
     queryKey: ["/api/workout-logs", { challengeId }],
     queryFn: () => api.workoutLogs.getAll(challengeId!),
     enabled: !!challengeId,

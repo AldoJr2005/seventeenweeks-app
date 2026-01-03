@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InsertDayLog } from "@shared/schema";
+import type { DayLog, InsertDayLog } from "@shared/schema";
 
 export function useDayLogs(challengeId: string | undefined) {
-  return useQuery({
+  return useQuery<DayLog[]>({
     queryKey: ["/api/day-logs", { challengeId }],
     queryFn: () => api.dayLogs.getAll(challengeId!),
     enabled: !!challengeId,
