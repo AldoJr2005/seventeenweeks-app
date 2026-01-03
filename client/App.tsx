@@ -16,6 +16,7 @@ import { useChallenge } from "@/hooks/useChallenge";
 import { getChallengeStatus } from "@/lib/challenge-utils";
 import SetupScreen from "@/screens/SetupScreen";
 import LoginScreen from "@/screens/LoginScreen";
+import OnboardingScreen from "@/screens/OnboardingScreen";
 import PreChallengeScreen from "@/screens/PreChallengeScreen";
 import type { Challenge } from "@shared/schema";
 
@@ -37,6 +38,10 @@ function AppContent() {
 
   if (isLoggedOut || (profile?.requirePasswordOnOpen && !isUnlocked)) {
     return <LoginScreen />;
+  }
+
+  if (profile && !profile.onboardingComplete) {
+    return <OnboardingScreen />;
   }
 
   if (challenge) {

@@ -1,4 +1,4 @@
-export type ChallengeStatus = "PRE_CHALLENGE" | "ACTIVE" | "COMPLETE";
+export type ChallengeStatus = "PRE_CHALLENGE" | "ACTIVE" | "COMPLETED";
 
 export function getNextMonday(): Date {
   const now = new Date();
@@ -42,7 +42,7 @@ export function getChallengeStatus(startDateStr: string): ChallengeStatus {
   endDate.setDate(endDate.getDate() + 17 * 7);
   
   if (today >= endDate) {
-    return "COMPLETE";
+    return "COMPLETED";
   }
   
   return "ACTIVE";

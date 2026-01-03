@@ -3,9 +3,14 @@ import { pgTable, text, varchar, integer, real, boolean, date, timestamp, jsonb 
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Challenge status
+export const CHALLENGE_STATUS = ["PRE_CHALLENGE", "ACTIVE", "COMPLETED"] as const;
+export type ChallengeStatus = typeof CHALLENGE_STATUS[number];
+
 // Challenge table - stores the 17-week challenge configuration
 export const challenges = pgTable("challenges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  status: varchar("status", { length: 20 }).notNull().default("PRE_CHALLENGE"),
   startDate: date("start_date").notNull(),
   startWeight: real("start_weight").notNull(),
   goalWeight: real("goal_weight"),
@@ -37,6 +42,8 @@ export const challenges = pgTable("challenges", {
   fastingType: varchar("fasting_type", { length: 10 }),
   eatingStartTime: varchar("eating_start_time", { length: 10 }),
   eatingEndTime: varchar("eating_end_time", { length: 10 }),
+  reflectionReminderDay: varchar("reflection_reminder_day", { length: 10 }).default("Sunday"),
+  reflectionReminderTime: varchar("reflection_reminder_time", { length: 10 }).default("20:30"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -127,11 +134,13 @@ export const userProfiles = pgTable("user_profiles", {
   heightValue: real("height_value").notNull(),
   heightUnit: varchar("height_unit", { length: 10 }).notNull().default("ft"),
   weightUnit: varchar("weight_unit", { length: 10 }).notNull().default("lbs"),
+  currentWeight: real("current_weight"),
   age: integer("age"),
   sex: varchar("sex", { length: 10 }),
   passwordHash: text("password_hash").notNull(),
   requirePasswordOnOpen: boolean("require_password_on_open").default(true),
   autoLockMinutes: integer("auto_lock_minutes").default(5),
+  onboardingComplete: boolean("onboarding_complete").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

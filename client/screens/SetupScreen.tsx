@@ -11,6 +11,8 @@ import { useCreateProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { hashPassword, setSessionUnlocked } from "@/lib/auth";
 
+const TOTAL_STEPS = 5;
+
 export default function SetupScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -23,8 +25,10 @@ export default function SetupScreen() {
   const [heightInches, setHeightInches] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [heightUnit, setHeightUnit] = useState<"ft" | "cm">("ft");
-  const [startWeight, setStartWeight] = useState("");
+  const [currentWeight, setCurrentWeight] = useState("");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
+  const [age, setAge] = useState("");
+  const [sex, setSex] = useState<"male" | "female" | "">("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -43,12 +47,13 @@ export default function SetupScreen() {
   const isStep2Valid = heightUnit === "ft" 
     ? (heightFeet || heightInches) 
     : heightCm;
-  const isStep3Valid = startWeight.trim().length > 0;
-  const isStep4Valid = password.length >= 4 && password === confirmPassword;
+  const isStep3Valid = currentWeight.trim().length > 0;
+  const isStep4Valid = age.trim().length > 0 && sex !== "";
+  const isStep5Valid = password.length >= 4 && password === confirmPassword;
 
   const handleComplete = async () => {
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
+      setError("PINs don't match");
       return;
     }
     if (password.length < 4) {
@@ -68,9 +73,13 @@ export default function SetupScreen() {
         heightValue,
         heightUnit,
         weightUnit,
+        currentWeight: parseFloat(currentWeight),
+        age: parseInt(age),
+        sex,
         passwordHash,
         requirePasswordOnOpen: true,
         autoLockMinutes: 5,
+        onboardingComplete: false,
       });
 
       await setSessionUnlocked(true);
@@ -81,6 +90,17 @@ export default function SetupScreen() {
       setIsLoading(false);
     }
   };
+
+  const renderProgressDots = () => (
+    <View style={styles.progressContainer}>
+      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+        <View
+          key={i}
+          style={[styles.progressDot, { backgroundColor: i < step ? theme.primary : theme.backgroundTertiary }]}
+        />
+      ))}
+    </View>
+  );
 
   const renderStep = () => {
     switch (step) {
@@ -164,7 +184,7 @@ export default function SetupScreen() {
       case 3:
         return (
           <View style={styles.stepContainer}>
-            <ThemedText style={styles.stepTitle}>Starting weight?</ThemedText>
+            <ThemedText style={styles.stepTitle}>Current weight?</ThemedText>
             <View style={styles.unitToggle}>
               <Pressable
                 style={[styles.unitButton, { backgroundColor: weightUnit === "lbs" ? theme.primary : theme.backgroundDefault }]}
@@ -184,8 +204,8 @@ export default function SetupScreen() {
               placeholder={`Weight in ${weightUnit}`}
               placeholderTextColor={theme.textSecondary}
               keyboardType="decimal-pad"
-              value={startWeight}
-              onChangeText={setStartWeight}
+              value={currentWeight}
+              onChangeText={setCurrentWeight}
             />
             <View style={styles.buttonRow}>
               <Pressable style={styles.backButton} onPress={() => setStep(2)}>
@@ -199,6 +219,52 @@ export default function SetupScreen() {
         );
 
       case 4:
+        return (
+          <View style={styles.stepContainer}>
+            <ThemedText style={styles.stepTitle}>A bit more about you</ThemedText>
+            <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+              This helps us calculate your calorie target
+            </ThemedText>
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Age</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="Your age"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="number-pad"
+                value={age}
+                onChangeText={setAge}
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Sex</ThemedText>
+              <View style={styles.sexToggle}>
+                <Pressable
+                  style={[styles.sexButton, { backgroundColor: sex === "male" ? theme.primary : theme.backgroundDefault, borderColor: theme.border }]}
+                  onPress={() => setSex("male")}
+                >
+                  <ThemedText style={{ color: sex === "male" ? "#FFF" : theme.text }}>Male</ThemedText>
+                </Pressable>
+                <Pressable
+                  style={[styles.sexButton, { backgroundColor: sex === "female" ? theme.primary : theme.backgroundDefault, borderColor: theme.border }]}
+                  onPress={() => setSex("female")}
+                >
+                  <ThemedText style={{ color: sex === "female" ? "#FFF" : theme.text }}>Female</ThemedText>
+                </Pressable>
+              </View>
+            </View>
+            <View style={styles.buttonRow}>
+              <Pressable style={styles.backButton} onPress={() => setStep(3)}>
+                <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
+              </Pressable>
+              <Button onPress={() => setStep(5)} disabled={!isStep4Valid} style={styles.flexButton}>
+                Continue
+              </Button>
+            </View>
+          </View>
+        );
+
+      case 5:
         return (
           <View style={styles.stepContainer}>
             <ThemedText style={styles.stepTitle}>Create a PIN</ThemedText>
@@ -227,11 +293,11 @@ export default function SetupScreen() {
             />
             {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
             <View style={styles.buttonRow}>
-              <Pressable style={styles.backButton} onPress={() => setStep(3)}>
+              <Pressable style={styles.backButton} onPress={() => setStep(4)}>
                 <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
               </Pressable>
-              <Button onPress={handleComplete} disabled={!isStep4Valid || isLoading} style={styles.flexButton}>
-                {isLoading ? <ActivityIndicator color="#FFF" /> : "Create Profile"}
+              <Button onPress={handleComplete} disabled={!isStep5Valid || isLoading} style={styles.flexButton}>
+                {isLoading ? <ActivityIndicator color="#FFF" /> : "Create Account"}
               </Button>
             </View>
           </View>
@@ -249,17 +315,10 @@ export default function SetupScreen() {
     >
       <Image source={require("../../assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
       <ThemedText style={styles.title}>Welcome</ThemedText>
-      <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Let's set up your profile
+      <ThemedText style={[styles.subtitleTop, { color: theme.textSecondary }]}>
+        Let's create your account
       </ThemedText>
-      <View style={styles.progressContainer}>
-        {[1, 2, 3, 4].map((s) => (
-          <View
-            key={s}
-            style={[styles.progressDot, { backgroundColor: s <= step ? theme.primary : theme.backgroundTertiary }]}
-          />
-        ))}
-      </View>
+      {renderProgressDots()}
       {renderStep()}
     </KeyboardAwareScrollViewCompat>
   );
@@ -281,9 +340,14 @@ const styles = StyleSheet.create({
     ...Typography.largeTitle,
     marginBottom: Spacing.xs,
   },
-  subtitle: {
+  subtitleTop: {
     ...Typography.body,
     marginBottom: Spacing.xl,
+    textAlign: "center",
+  },
+  subtitle: {
+    ...Typography.body,
+    marginBottom: Spacing.lg,
     textAlign: "center",
   },
   progressContainer: {
@@ -305,6 +369,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: Spacing.sm,
   },
+  inputGroup: {
+    gap: Spacing.sm,
+  },
+  inputLabel: {
+    ...Typography.subheadline,
+  },
   input: {
     height: Spacing.inputHeight,
     borderWidth: 1,
@@ -321,6 +391,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.xs,
+  },
+  sexToggle: {
+    flexDirection: "row",
+    gap: Spacing.md,
+  },
+  sexButton: {
+    flex: 1,
+    height: Spacing.inputHeight,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   heightRow: {
     flexDirection: "row",

@@ -1,0 +1,70 @@
+Adjust onboarding/account creation so that **ALL setup is completed before the challenge starts**. The goal is: when the user finishes creating an account, their full plan is ready, and when Monday arrives the app unlocks and they can start logging immediately with everything pre-configured.
+
+WHAT I WANT (CORE FLOW)
+1) User opens app → if no profile exists → show “Create Account”
+2) Create Account collects:
+   - Name
+   - Height (ft/in or cm)
+   - Current weight + unit (lbs/kg)
+   - Age + sex (for TDEE)
+   - Create password/PIN (required)
+3) Immediately after account creation, run a guided onboarding wizard that gathers:
+   - Goal weight (required)
+   - Weekly weight loss goal selector (Conservative / Moderate / Aggressive) with slider
+   - Activity level selector → calculate TDEE + recommended daily calorie target
+   - Workout plan preferences:
+     • workouts per week (0–7)
+     • training style (Gym / Running / Home / Mixed)
+     • split preference (PPL / Upper-Lower / Full Body / Cardio-focused)
+     • running days/week if chosen
+   - Fasting setup:
+     • fasting type (16:8 / 18:6 / 20:4)
+     • ask typical lunch time (required)
+     • optionally ask dinner finish time
+     • recommend eating window + fasting start time based on lunch time
+     • user can adjust
+   - Baseline snapshot (Week 0):
+     • baseline weight (prefill with current weight, allow edit)
+     • optional baseline photo
+     • optional rough baseline steps/day and workouts/week
+   - Weekly reflection preference:
+     • choose reminder day/time (default Sunday 8:30 PM)
+4) After onboarding, compute challenge start date:
+   - The challenge ALWAYS starts on the next Monday at 00:00 local time unless today is Monday and it’s before start time (or before midnight).
+   - If today is not Monday, start date = next Monday 00:00.
+5) If start date is in the future:
+   - Route to a locked “Challenge Starts In” countdown screen.
+   - The user cannot access logging screens/tabs until Monday.
+   - The countdown screen shows plan summary (calorie target, workouts/week, fasting window).
+   - Allow ONLY:
+     • View plan summary
+     • Edit profile/plan (re-run onboarding sections)
+     • Log out / reset
+6) When Monday arrives:
+   - The app automatically unlocks.
+   - User lands on Home dashboard with all defaults ready:
+     • calorie target visible
+     • workout templates pre-built
+     • fasting window visible
+     • reminders scheduled
+
+IMPLEMENTATION DETAILS
+- Use Expo Router route guards:
+  - If profile not created → /auth/create
+  - If profile exists but locked (password required) → /auth/unlock
+  - If challengeStatus = PRE_CHALLENGE → /pre-challenge (block all other routes)
+  - If ACTIVE → normal tabs enabled
+- Store all onboarding answers in SQLite:
+  - Challenge plan fields (goalWeight, targetCalories, activityLevel, workoutsPerWeek, split, fasting window times, etc.)
+- Schedule notifications immediately after onboarding is complete:
+  - If PRE_CHALLENGE, schedule notifications to begin on Monday (not before).
+  - If ACTIVE, schedule immediately.
+- Ensure the “Edit Plan” flow updates stored plan + re-schedules notifications.
+
+UI REQUIREMENTS
+- Apple-style wizard with progress indicator (Step 1 of N)
+- Large inputs, segmented controls, sliders, time pickers
+- “Plan Summary” screen at the end with an “All set for Monday” confirmation
+
+DELIVERABLE
+Update the app so account creation + onboarding collects ALL plan info up front, then locks the user in a pre-challenge countdown mode until Monday, and unlocks automatically with everything configured and ready to log.

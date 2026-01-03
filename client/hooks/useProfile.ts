@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { InsertUserProfile } from "@shared/schema";
+import type { InsertUserProfile, UserProfile } from "@shared/schema";
 
 export function useProfile() {
-  return useQuery({
+  return useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
   });
 }
