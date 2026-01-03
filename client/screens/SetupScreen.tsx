@@ -78,6 +78,7 @@ export default function SetupScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [sex, setSex] = useState<"male" | "female" | "">("");
@@ -175,7 +176,7 @@ export default function SetupScreen() {
     return { protein, carbs, fat };
   }, [targetCalories, macroPreset]);
 
-  const isStep1Valid = name.trim().length > 0 && age.trim().length > 0 && sex !== "" &&
+  const isStep1Valid = username.trim().length >= 3 && name.trim().length > 0 && age.trim().length > 0 && sex !== "" &&
     !!(heightUnit === "ft" ? (heightFeet || heightInches) : heightCm) &&
     currentWeight.trim().length > 0 && password.length >= 4 && password === confirmPassword;
   const isStep2Valid = goalWeight.trim().length > 0;
@@ -246,6 +247,7 @@ export default function SetupScreen() {
       const weightValue = parseFloat(currentWeight);
 
       const profile = await createProfile.mutateAsync({
+        username: username.trim().toLowerCase(),
         name: name.trim(),
         heightValue,
         heightUnit,
@@ -324,6 +326,19 @@ export default function SetupScreen() {
           <View style={styles.stepContent}>
             <ThemedText style={styles.stepTitle}>Let's get started</ThemedText>
             <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>Tell us about yourself</ThemedText>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Username</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="Choose a username (min 3 characters)"
+                placeholderTextColor={theme.textSecondary}
+                value={username}
+                onChangeText={(t) => setUsername(t.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
 
             <View style={styles.inputGroup}>
               <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Name</ThemedText>

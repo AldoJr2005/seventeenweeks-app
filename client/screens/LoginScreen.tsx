@@ -55,6 +55,7 @@ export default function LoginScreen() {
   };
 
   const userName = profile?.name || "there";
+  const userUsername = profile?.username;
 
   return (
     <KeyboardAwareScrollViewCompat
@@ -64,6 +65,9 @@ export default function LoginScreen() {
       <Image source={require("../../assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
       
       <ThemedText style={styles.greeting}>Hi, {userName}</ThemedText>
+      {userUsername ? (
+        <ThemedText style={[styles.usernameText, { color: theme.textSecondary }]}>@{userUsername}</ThemedText>
+      ) : null}
       <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
         Enter your PIN to continue
       </ThemedText>
@@ -192,6 +196,10 @@ const styles = StyleSheet.create({
   },
   greeting: {
     ...Typography.largeTitle,
+    marginBottom: Spacing.xs,
+  },
+  usernameText: {
+    ...Typography.footnote,
     marginBottom: Spacing.xs,
   },
   subtitle: {

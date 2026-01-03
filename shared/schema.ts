@@ -138,6 +138,7 @@ export const reminderLogs = pgTable("reminder_logs", {
 // User profile (for authentication and personal info)
 export const userProfiles = pgTable("user_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: varchar("username", { length: 50 }),
   name: text("name").notNull(),
   heightValue: real("height_value").notNull(),
   heightUnit: varchar("height_unit", { length: 10 }).notNull().default("ft"),
