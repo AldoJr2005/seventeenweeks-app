@@ -4,7 +4,8 @@ import type { WeeklyPhoto, WeeklyCheckIn, InsertWeeklyPhoto, InsertWeeklyCheckIn
 
 export function useWeeklyPhotos(challengeId: string | undefined) {
   return useQuery<WeeklyPhoto[]>({
-    queryKey: ["/api/weekly-photos", challengeId],
+    queryKey: ["/api/weekly-photos", { challengeId }],
+    queryFn: () => api.weeklyPhotos.getAll(challengeId!),
     enabled: !!challengeId,
   });
 }
@@ -33,7 +34,8 @@ export function useUpdateWeeklyPhoto() {
 
 export function useWeeklyCheckIns(challengeId: string | undefined) {
   return useQuery<WeeklyCheckIn[]>({
-    queryKey: ["/api/weekly-check-ins", challengeId],
+    queryKey: ["/api/weekly-check-ins", { challengeId }],
+    queryFn: () => api.weeklyCheckIns.getAll(challengeId!),
     enabled: !!challengeId,
   });
 }
