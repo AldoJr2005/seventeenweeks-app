@@ -13,18 +13,22 @@ interface ProgressRingProps {
   backgroundColor?: string;
   label?: string;
   value?: string;
+  subValue?: string;
   showPercentage?: boolean;
+  compact?: boolean;
 }
 
 export function ProgressRing({
   progress,
-  size = 80,
-  strokeWidth = 8,
+  size = 64,
+  strokeWidth = 6,
   color,
   backgroundColor,
   label,
   value,
+  subValue,
   showPercentage = false,
+  compact = false,
 }: ProgressRingProps) {
   const { theme } = useTheme();
   const progressColor = color || theme.primary;
@@ -63,11 +67,14 @@ export function ProgressRing({
         </Svg>
         <View style={styles.centerContent}>
           {value ? (
-            <ThemedText style={styles.value}>{value}</ThemedText>
+            <ThemedText style={compact ? styles.valueCompact : styles.value}>{value}</ThemedText>
           ) : showPercentage ? (
-            <ThemedText style={styles.value}>
+            <ThemedText style={compact ? styles.valueCompact : styles.value}>
               {Math.round(clampedProgress * 100)}%
             </ThemedText>
+          ) : null}
+          {subValue ? (
+            <ThemedText style={[styles.subValue, { color: theme.textSecondary }]}>{subValue}</ThemedText>
           ) : null}
         </View>
       </View>
@@ -100,8 +107,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   value: {
-    ...Typography.footnote,
+    ...Typography.subheadline,
     fontWeight: "600",
+  },
+  valueCompact: {
+    ...Typography.caption,
+    fontWeight: "600",
+  },
+  subValue: {
+    fontSize: 10,
+    fontWeight: "400" as const,
+    marginTop: -2,
   },
   label: {
     ...Typography.caption,

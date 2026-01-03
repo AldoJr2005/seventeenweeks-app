@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { ScrollView, View, StyleSheet, ActivityIndicator, Pressable } from "react-native";
+import React, { useEffect, useRef, useMemo, useState } from "react";
+import { ScrollView, View, StyleSheet, ActivityIndicator, Pressable, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -14,14 +14,20 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { ProgressRing } from "@/components/ProgressRing";
 import { useChallenge } from "@/hooks/useChallenge";
 import { useDayLogs } from "@/hooks/useDayLogs";
 import { useWorkoutLogs } from "@/hooks/useWorkoutLogs";
 import { useHabitLogs } from "@/hooks/useHabitLogs";
 import { useWeeklyPhotos, useWeeklyCheckIns } from "@/hooks/useWeeklyData";
+import { useFoodEntries } from "@/hooks/useFoodEntries";
 import { getToday, getCurrentWeekNumber, getWeekNumber, isMonday, formatDisplayDate } from "@/lib/date-utils";
 import type { HomeStackParamList } from "@/navigation/HomeStackNavigator";
-import type { Challenge, DayLog, WorkoutLog, HabitLog, WeeklyPhoto, WeeklyCheckIn } from "@shared/schema";
+import type { Challenge, DayLog, WorkoutLog, HabitLog, WeeklyPhoto, WeeklyCheckIn, FoodEntry } from "@shared/schema";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const CARD_PADDING = Spacing.lg * 2;
+const NUTRITION_CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING - Spacing.md;
 
 const MOTIVATIONAL_PHRASES = [
   "Consistency over perfection.",
@@ -50,6 +56,8 @@ export default function HomeScreen() {
   const { data: weeklyCheckIns } = useWeeklyCheckIns(challenge?.id);
 
   const today = getToday();
+  const { data: foodEntries } = useFoodEntries(challenge?.id, today);
+  const [nutritionCardIndex, setNutritionCardIndex] = useState(0);
   const currentWeek = challenge ? getCurrentWeekNumber(challenge.startDate) : 1;
 
   useEffect(() => {
@@ -116,6 +124,36 @@ export default function HomeScreen() {
     return logWeek === currentWeek && log.type !== "Rest";
   }) || [];
 
+  const targetCalories = challenge.targetCalories || 2000;
+  const targetProtein = challenge.targetProteinGrams || 150;
+  const targetCarbs = challenge.targetCarbsGrams || 200;
+  const targetFat = challenge.targetFatGrams || 65;
+
+  const nutritionTotals = useMemo(() => {
+    if (!foodEntries) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    return (foodEntries as FoodEntry[]).reduce((acc, entry) => ({
+      calories: acc.calories + Math.round(entry.caloriesPerServing * entry.servingsCount),
+      protein: acc.protein + Math.round((entry.proteinPerServing || 0) * entry.servingsCount),
+      carbs: acc.carbs + Math.round((entry.carbsPerServing || 0) * entry.servingsCount),
+      fat: acc.fat + Math.round((entry.fatPerServing || 0) * entry.servingsCount),
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  }, [foodEntries]);
+
+  const caloriesRemaining = targetCalories - nutritionTotals.calories;
+  const caloriesProgress = targetCalories > 0 ? nutritionTotals.calories / targetCalories : 0;
+  const proteinProgress = targetProtein > 0 ? nutritionTotals.protein / targetProtein : 0;
+  const carbsProgress = targetCarbs > 0 ? nutritionTotals.carbs / targetCarbs : 0;
+  const fatProgress = targetFat > 0 ? nutritionTotals.fat / targetFat : 0;
+
+  const handleNutritionScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / NUTRITION_CARD_WIDTH);
+    if (index !== nutritionCardIndex) {
+      setNutritionCardIndex(index);
+      Haptics.selectionAsync();
+    }
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
@@ -167,6 +205,94 @@ export default function HomeScreen() {
           onPress={() => navigation.getParent()?.navigate("LogTab", { screen: "HabitsLog", params: { date: today } })}
         />
       </Card>
+
+      <Pressable 
+        onPress={() => navigation.getParent()?.navigate("LogTab", { screen: "NutritionLog", params: { date: today } })}
+        style={styles.nutritionDashboard}
+      >
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleNutritionScroll}
+          scrollEventThrottle={16}
+          decelerationRate="fast"
+          snapToInterval={NUTRITION_CARD_WIDTH}
+          contentContainerStyle={{ gap: Spacing.sm }}
+        >
+          <Card style={[styles.nutritionCard, { width: NUTRITION_CARD_WIDTH }]}>
+            <View style={styles.nutritionCardContent}>
+              <ProgressRing
+                progress={caloriesProgress}
+                size={72}
+                strokeWidth={7}
+                color={caloriesProgress > 1 ? theme.warning : theme.primary}
+              />
+              <View style={styles.nutritionInfo}>
+                <ThemedText style={styles.nutritionMainValue}>
+                  {caloriesRemaining > 0 ? caloriesRemaining.toLocaleString() : 0}
+                </ThemedText>
+                <ThemedText style={[styles.nutritionLabel, { color: theme.textSecondary }]}>
+                  calories remaining
+                </ThemedText>
+                <ThemedText style={[styles.nutritionSubLabel, { color: theme.textSecondary }]}>
+                  {nutritionTotals.calories.toLocaleString()} / {targetCalories.toLocaleString()} cal
+                </ThemedText>
+              </View>
+            </View>
+          </Card>
+
+          <Card style={[styles.nutritionCard, { width: NUTRITION_CARD_WIDTH }]}>
+            <View style={styles.macrosRow}>
+              <View style={styles.macroItem}>
+                <ProgressRing
+                  progress={carbsProgress}
+                  size={52}
+                  strokeWidth={5}
+                  color="#FF9500"
+                  compact
+                />
+                <ThemedText style={styles.macroValue}>{nutritionTotals.carbs}g</ThemedText>
+                <ThemedText style={[styles.macroLabel, { color: theme.textSecondary }]}>Carbs</ThemedText>
+              </View>
+              <View style={styles.macroItem}>
+                <ProgressRing
+                  progress={fatProgress}
+                  size={52}
+                  strokeWidth={5}
+                  color="#FF3B30"
+                  compact
+                />
+                <ThemedText style={styles.macroValue}>{nutritionTotals.fat}g</ThemedText>
+                <ThemedText style={[styles.macroLabel, { color: theme.textSecondary }]}>Fat</ThemedText>
+              </View>
+              <View style={styles.macroItem}>
+                <ProgressRing
+                  progress={proteinProgress}
+                  size={52}
+                  strokeWidth={5}
+                  color="#34C759"
+                  compact
+                />
+                <ThemedText style={styles.macroValue}>{nutritionTotals.protein}g</ThemedText>
+                <ThemedText style={[styles.macroLabel, { color: theme.textSecondary }]}>Protein</ThemedText>
+              </View>
+            </View>
+          </Card>
+        </ScrollView>
+
+        <View style={styles.paginationDots}>
+          {[0, 1].map((i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                { backgroundColor: i === nutritionCardIndex ? theme.primary : theme.backgroundTertiary }
+              ]}
+            />
+          ))}
+        </View>
+      </Pressable>
 
       <Card style={styles.card}>
         <ThemedText style={styles.cardTitle}>This Week</ThemedText>
@@ -426,5 +552,59 @@ const styles = StyleSheet.create({
     ...Typography.footnote,
     fontWeight: "500",
     textAlign: "center",
+  },
+  nutritionDashboard: {
+    marginBottom: Spacing.lg,
+  },
+  nutritionCard: {
+    marginBottom: 0,
+  },
+  nutritionCardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.lg,
+  },
+  nutritionInfo: {
+    flex: 1,
+  },
+  nutritionMainValue: {
+    ...Typography.title1,
+    fontWeight: "700",
+  },
+  nutritionLabel: {
+    ...Typography.subheadline,
+    marginTop: Spacing.xs,
+  },
+  nutritionSubLabel: {
+    ...Typography.caption,
+    marginTop: Spacing.xs,
+  },
+  macrosRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
+  macroItem: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  macroValue: {
+    ...Typography.headline,
+    fontWeight: "600",
+    marginTop: Spacing.sm,
+  },
+  macroLabel: {
+    ...Typography.caption,
+  },
+  paginationDots: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
 });

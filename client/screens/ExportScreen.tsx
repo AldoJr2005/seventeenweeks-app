@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { ScrollView, View, StyleSheet, Pressable, Alert, Share, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -14,10 +14,11 @@ import { useDayLogs } from "@/hooks/useDayLogs";
 import { useWorkoutLogs } from "@/hooks/useWorkoutLogs";
 import { useHabitLogs } from "@/hooks/useHabitLogs";
 import { useWeeklyCheckIns, useWeeklyPhotos } from "@/hooks/useWeeklyData";
+import { useFoodEntriesByDateRange } from "@/hooks/useFoodEntries";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCurrentWeekNumber } from "@/lib/date-utils";
+import { getCurrentWeekNumber, addDays } from "@/lib/date-utils";
 import { generateWeeklyPDF, generateFullChallengePDF, sharePDF, getWeekDataFromLogs } from "@/lib/pdf-generator";
-import type { Challenge, WeeklyCheckIn, WeeklyPhoto, DayLog, WorkoutLog, HabitLog } from "@shared/schema";
+import type { Challenge, WeeklyCheckIn, WeeklyPhoto, DayLog, WorkoutLog, HabitLog, FoodEntry } from "@shared/schema";
 
 export default function ExportScreen() {
   const insets = useSafeAreaInsets();
@@ -37,6 +38,19 @@ export default function ExportScreen() {
   const challengeData = challenge as Challenge | undefined;
   const checkIns = (weeklyCheckIns as WeeklyCheckIn[] | undefined) || [];
   const currentWeek = challengeData ? getCurrentWeekNumber(challengeData.startDate) : 1;
+
+  const challengeEndDate = useMemo(() => {
+    if (!challengeData) return "";
+    const end = new Date(challengeData.startDate);
+    end.setDate(end.getDate() + 17 * 7 - 1);
+    return end.toISOString().split("T")[0];
+  }, [challengeData?.startDate]);
+
+  const { data: foodEntries } = useFoodEntriesByDateRange(
+    challengeData?.id,
+    challengeData?.startDate || "",
+    challengeEndDate
+  );
 
   const startWeight = challengeData?.startWeight || 0;
   const currentWeight = checkIns.length > 0 ? checkIns[checkIns.length - 1].weight : startWeight;
@@ -86,7 +100,8 @@ export default function ExportScreen() {
         (workoutLogs as WorkoutLog[] | undefined) || [],
         (habitLogs as HabitLog[] | undefined) || [],
         (weeklyPhotos as WeeklyPhoto[] | undefined) || [],
-        checkIns
+        checkIns,
+        (foodEntries as FoodEntry[] | undefined) || []
       );
       const pdfUri = await generateWeeklyPDF(weekData, challengeData, profile);
       await sharePDF(pdfUri, `Week${currentWeek}_Report.pdf`);
@@ -110,7 +125,8 @@ export default function ExportScreen() {
           (workoutLogs as WorkoutLog[] | undefined) || [],
           (habitLogs as HabitLog[] | undefined) || [],
           (weeklyPhotos as WeeklyPhoto[] | undefined) || [],
-          checkIns
+          checkIns,
+          (foodEntries as FoodEntry[] | undefined) || []
         ));
       }
       const pdfUri = await generateFullChallengePDF({

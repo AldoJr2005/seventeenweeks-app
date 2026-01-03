@@ -1,8 +1,16 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
-import type { Challenge, DayLog, WorkoutLog, WeeklyPhoto, WeeklyCheckIn, HabitLog, UserProfile } from "@shared/schema";
+import type { Challenge, DayLog, WorkoutLog, WeeklyPhoto, WeeklyCheckIn, HabitLog, UserProfile, FoodEntry } from "@shared/schema";
 import { getPhotoBase64ForPDF } from "@/lib/photo-storage";
+
+interface DailyNutrition {
+  date: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
 
 interface WeekData {
   weekNumber: number;
@@ -13,6 +21,7 @@ interface WeekData {
   habitLogs: HabitLog[];
   photo: WeeklyPhoto | null;
   checkIn: WeeklyCheckIn | null;
+  dailyNutrition: DailyNutrition[];
 }
 
 interface PDFData {
@@ -39,7 +48,9 @@ function formatNumber(num: number | null | undefined, decimals: number = 0): str
 }
 
 function hasWeekData(week: WeekData): boolean {
-  return week.dayLogs.length > 0 || 
+  const hasNutrition = week.dailyNutrition.some(n => n.calories > 0);
+  return hasNutrition || 
+         week.dayLogs.length > 0 || 
          week.workoutLogs.length > 0 || 
          week.habitLogs.length > 0 || 
          week.checkIn !== null ||
@@ -451,22 +462,19 @@ function generateStyles(): string {
 }
 
 function generateWeekOverview(week: WeekData, challenge: Challenge): string {
-  const logsWithCalories = week.dayLogs.filter(d => d.calories && d.calories > 0);
-  const avgCalories = logsWithCalories.length > 0 
-    ? Math.round(logsWithCalories.reduce((sum, d) => sum + (d.calories || 0), 0) / logsWithCalories.length)
+  const nutritionWithCalories = week.dailyNutrition.filter(d => d.calories > 0);
+  const avgCalories = nutritionWithCalories.length > 0 
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.calories, 0) / nutritionWithCalories.length)
     : null;
   
-  const logsWithProtein = week.dayLogs.filter(d => d.protein);
-  const avgProtein = logsWithProtein.length > 0
-    ? Math.round(logsWithProtein.reduce((sum, d) => sum + (d.protein || 0), 0) / logsWithProtein.length)
+  const avgProtein = nutritionWithCalories.length > 0
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.protein, 0) / nutritionWithCalories.length)
     : 0;
-  const logsWithCarbs = week.dayLogs.filter(d => d.carbs);
-  const avgCarbs = logsWithCarbs.length > 0
-    ? Math.round(logsWithCarbs.reduce((sum, d) => sum + (d.carbs || 0), 0) / logsWithCarbs.length)
+  const avgCarbs = nutritionWithCalories.length > 0
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.carbs, 0) / nutritionWithCalories.length)
     : 0;
-  const logsWithFat = week.dayLogs.filter(d => d.fat);
-  const avgFat = logsWithFat.length > 0
-    ? Math.round(logsWithFat.reduce((sum, d) => sum + (d.fat || 0), 0) / logsWithFat.length)
+  const avgFat = nutritionWithCalories.length > 0
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.fat, 0) / nutritionWithCalories.length)
     : 0;
 
   const workoutsCompleted = week.workoutLogs.filter(w => w.type !== "Rest").length;
@@ -537,6 +545,7 @@ function generateDailyTable(week: WeekData): string {
 
   const rows = days.map((dateStr, i) => {
     const dayLog = week.dayLogs.find(d => d.date === dateStr);
+    const nutrition = week.dailyNutrition.find(n => n.date === dateStr);
     const workoutLog = week.workoutLogs.find(w => w.date === dateStr);
     const habitLog = week.habitLogs.find(h => h.date === dateStr);
 
@@ -553,8 +562,9 @@ function generateDailyTable(week: WeekData): string {
       ? Number(habitLog.sleepHours).toFixed(1) 
       : '<span class="dash">—</span>';
     
-    const macros = dayLog && (dayLog.protein || dayLog.carbs || dayLog.fat)
-      ? `${dayLog.protein || 0}/${dayLog.carbs || 0}/${dayLog.fat || 0}`
+    const hasNutrition = nutrition && (nutrition.protein > 0 || nutrition.carbs > 0 || nutrition.fat > 0);
+    const macros = hasNutrition
+      ? `${nutrition.protein}/${nutrition.carbs}/${nutrition.fat}`
       : '<span class="dash">—</span>';
 
     let workoutCell = '<span class="dash">—</span>';
@@ -567,7 +577,7 @@ function generateDailyTable(week: WeekData): string {
     return `
       <tr class="avoid-break">
         <td class="day-col"><strong>${DAYS[i]}</strong> ${formatDate(dateStr)}</td>
-        <td class="cal-col">${dayLog?.calories || '<span class="dash">—</span>'}</td>
+        <td class="cal-col">${nutrition && nutrition.calories > 0 ? nutrition.calories : '<span class="dash">—</span>'}</td>
         <td class="macro-col">${macros}</td>
         <td class="steps-col">${habitLog?.steps ? habitLog.steps.toLocaleString() : '<span class="dash">—</span>'}</td>
         <td class="water-col">${habitLog?.waterDone ? '<span class="check">✓</span>' : '<span class="dash">—</span>'}</td>
@@ -664,22 +674,19 @@ function generateCompactPhotoSection(week: WeekData, base64Image: string | null,
 }
 
 function generateCompactOverview(week: WeekData, challenge: Challenge): string {
-  const logsWithCalories = week.dayLogs.filter(d => d.calories && d.calories > 0);
-  const avgCalories = logsWithCalories.length > 0 
-    ? Math.round(logsWithCalories.reduce((sum, d) => sum + (d.calories || 0), 0) / logsWithCalories.length)
+  const nutritionWithCalories = week.dailyNutrition.filter(d => d.calories > 0);
+  const avgCalories = nutritionWithCalories.length > 0 
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.calories, 0) / nutritionWithCalories.length)
     : null;
   
-  const logsWithProtein = week.dayLogs.filter(d => d.protein);
-  const avgProtein = logsWithProtein.length > 0
-    ? Math.round(logsWithProtein.reduce((sum, d) => sum + (d.protein || 0), 0) / logsWithProtein.length)
+  const avgProtein = nutritionWithCalories.length > 0
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.protein, 0) / nutritionWithCalories.length)
     : 0;
-  const logsWithCarbs = week.dayLogs.filter(d => d.carbs);
-  const avgCarbs = logsWithCarbs.length > 0
-    ? Math.round(logsWithCarbs.reduce((sum, d) => sum + (d.carbs || 0), 0) / logsWithCarbs.length)
+  const avgCarbs = nutritionWithCalories.length > 0
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.carbs, 0) / nutritionWithCalories.length)
     : 0;
-  const logsWithFat = week.dayLogs.filter(d => d.fat);
-  const avgFat = logsWithFat.length > 0
-    ? Math.round(logsWithFat.reduce((sum, d) => sum + (d.fat || 0), 0) / logsWithFat.length)
+  const avgFat = nutritionWithCalories.length > 0
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.fat, 0) / nutritionWithCalories.length)
     : 0;
 
   const workoutsCompleted = week.workoutLogs.filter(w => w.type !== "Rest").length;
@@ -788,21 +795,21 @@ function generateCoverPage(data: PDFData): string {
 }
 
 function generateFinalSummary(data: PDFData): string {
-  const allDayLogs = data.weeks.flatMap(w => w.dayLogs);
+  const allNutrition = data.weeks.flatMap(w => w.dailyNutrition);
   const allWorkoutLogs = data.weeks.flatMap(w => w.workoutLogs);
   const allHabitLogs = data.weeks.flatMap(w => w.habitLogs);
   const allCheckIns = data.weeks.map(w => w.checkIn).filter(Boolean) as WeeklyCheckIn[];
 
   const totalWorkouts = allWorkoutLogs.filter(w => w.type !== "Rest").length;
-  const logsWithCalories = allDayLogs.filter(d => d.calories && d.calories > 0);
-  const avgCalories = logsWithCalories.length > 0 
-    ? Math.round(logsWithCalories.reduce((sum, d) => sum + (d.calories || 0), 0) / logsWithCalories.length)
+  const nutritionWithCalories = allNutrition.filter(d => d.calories > 0);
+  const avgCalories = nutritionWithCalories.length > 0 
+    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.calories, 0) / nutritionWithCalories.length)
     : 0;
   
   const lastWeight = allCheckIns.length > 0 ? allCheckIns[allCheckIns.length - 1]?.weight : null;
   const totalChange = lastWeight ? lastWeight - data.challenge.startWeight : null;
 
-  const daysLogged = allDayLogs.filter(d => d.calories || d.protein).length;
+  const daysLogged = allNutrition.filter(d => d.calories > 0 || d.protein > 0).length;
   const totalDays = data.weeks.length * 7;
   const compliance = totalDays > 0 ? Math.round((daysLogged / totalDays) * 100) : 0;
 
@@ -958,7 +965,8 @@ export function getWeekDataFromLogs(
   workoutLogs: WorkoutLog[],
   habitLogs: HabitLog[],
   weeklyPhotos: WeeklyPhoto[],
-  weeklyCheckIns: WeeklyCheckIn[]
+  weeklyCheckIns: WeeklyCheckIn[],
+  foodEntries: FoodEntry[] = []
 ): WeekData {
   const startDate = new Date(challenge.startDate);
   startDate.setDate(startDate.getDate() + (weekNumber - 1) * 7);
@@ -971,8 +979,43 @@ export function getWeekDataFromLogs(
   const weekDayLogs = dayLogs.filter(d => d.date >= startStr && d.date <= endStr);
   const weekWorkoutLogs = workoutLogs.filter(w => w.date >= startStr && w.date <= endStr);
   const weekHabitLogs = habitLogs.filter(h => h.date >= startStr && h.date <= endStr);
+  const weekFoodEntries = foodEntries.filter(f => f.date >= startStr && f.date <= endStr);
   const photo = weeklyPhotos.find(p => p.weekNumber === weekNumber) || null;
   const checkIn = weeklyCheckIns.find(c => c.weekNumber === weekNumber) || null;
+
+  const days: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    days.push(d.toISOString().split("T")[0]);
+  }
+
+  const dailyNutrition: DailyNutrition[] = days.map(date => {
+    const dayEntries = weekFoodEntries.filter(e => e.date === date);
+    const dayLog = weekDayLogs.find(d => d.date === date);
+    
+    if (dayEntries.length > 0) {
+      return dayEntries.reduce((acc, entry) => ({
+        date,
+        calories: acc.calories + Math.round(entry.caloriesPerServing * entry.servingsCount),
+        protein: acc.protein + Math.round((entry.proteinPerServing || 0) * entry.servingsCount),
+        carbs: acc.carbs + Math.round((entry.carbsPerServing || 0) * entry.servingsCount),
+        fat: acc.fat + Math.round((entry.fatPerServing || 0) * entry.servingsCount),
+      }), { date, calories: 0, protein: 0, carbs: 0, fat: 0 });
+    }
+    
+    if (dayLog && !dayLog.skipped) {
+      return {
+        date,
+        calories: dayLog.calories || 0,
+        protein: dayLog.protein || 0,
+        carbs: dayLog.carbs || 0,
+        fat: dayLog.fat || 0,
+      };
+    }
+    
+    return { date, calories: 0, protein: 0, carbs: 0, fat: 0 };
+  });
 
   return {
     weekNumber,
@@ -983,5 +1026,6 @@ export function getWeekDataFromLogs(
     habitLogs: weekHabitLogs,
     photo,
     checkIn,
+    dailyNutrition,
   };
 }
