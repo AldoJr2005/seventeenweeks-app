@@ -83,6 +83,7 @@ export const api = {
     update: (id: string, data: Partial<InsertUserProfile>) => apiRequest<UserProfile>("PATCH", `/api/profile/${id}`, data),
     delete: (id: string) => apiRequest<void>("DELETE", `/api/profile/${id}`),
     verifyPassword: (passwordHash: string) => apiRequest<{ valid: boolean }>("POST", "/api/profile/verify-password", { passwordHash }),
+    login: (username: string, passwordHash: string) => apiRequest<{ success: boolean; message?: string }>("POST", "/api/profile/login", { username, passwordHash }),
   },
 
   baselineSnapshots: {

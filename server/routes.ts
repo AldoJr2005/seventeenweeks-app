@@ -355,6 +355,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/profile/login", async (req, res) => {
+    try {
+      const { username, passwordHash } = req.body;
+      if (!username || !passwordHash) {
+        return res.status(400).json({ success: false, message: "Username and PIN are required" });
+      }
+      const profile = await storage.getUserProfileByUsername(username);
+      if (!profile) {
+        return res.json({ success: false, message: "No account found with that username" });
+      }
+      const isValid = profile.passwordHash === passwordHash;
+      if (!isValid) {
+        return res.json({ success: false, message: "Incorrect PIN" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Login failed" });
+    }
+  });
+
   app.post("/api/profile/change-password", async (req, res) => {
     try {
       const { oldPasswordHash, newPasswordHash } = req.body;

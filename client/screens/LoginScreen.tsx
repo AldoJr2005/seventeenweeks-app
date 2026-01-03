@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, TextInput, Image, ActivityIndicator, Modal, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
@@ -8,12 +9,15 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useAuth } from "@/contexts/AuthContext";
+import { api } from "@/lib/api";
+import { hashPassword, setSessionUnlocked } from "@/lib/auth";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { profile, unlock, resetApp, startNewAccount } = useAuth();
+  const { profile, unlock, resetApp, startNewAccount, refreshAuth } = useAuth();
 
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +25,8 @@ export default function LoginScreen() {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [showNewAccountModal, setShowNewAccountModal] = useState(false);
   const [newAccountConfirmText, setNewAccountConfirmText] = useState("");
+
+  const hasLocalProfile = !!profile;
 
   const handleUnlock = async () => {
     if (!password) return;
@@ -31,11 +37,37 @@ export default function LoginScreen() {
     const success = await unlock(password);
     
     if (!success) {
-      setError("Incorrect password");
+      setError("Incorrect PIN");
       setPassword("");
     }
     
     setIsLoading(false);
+  };
+
+  const handleLogin = async () => {
+    if (!username || !password) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const passwordHash = await hashPassword(password);
+      const result = await api.profile.login(username, passwordHash);
+
+      if (result.success) {
+        await setSessionUnlocked(true);
+        refreshAuth();
+      } else {
+        setError(result.message || "Invalid username or PIN");
+        setPassword("");
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || "Login failed. Please try again.");
+      setPassword("");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = async () => {
@@ -49,7 +81,7 @@ export default function LoginScreen() {
   const handleNewAccount = async () => {
     if (newAccountConfirmText.toLowerCase() !== "confirm") return;
     
-    await resetApp();
+    startNewAccount();
     setShowNewAccountModal(false);
     setNewAccountConfirmText("");
   };
@@ -61,55 +93,116 @@ export default function LoginScreen() {
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing["3xl"], paddingBottom: insets.bottom + Spacing.xl }]}
+      showsVerticalScrollIndicator={false}
     >
       <Image source={require("../../assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
       
-      <ThemedText style={styles.greeting}>Hi, {userName}</ThemedText>
-      {userUsername ? (
-        <ThemedText style={[styles.usernameText, { color: theme.textSecondary }]}>@{userUsername}</ThemedText>
-      ) : null}
-      <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Enter your PIN to continue
-      </ThemedText>
-
-      <View style={styles.formContainer}>
-        <TextInput
-          style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: error ? "#FF3B30" : theme.border }]}
-          placeholder="PIN"
-          placeholderTextColor={theme.textSecondary}
-          secureTextEntry
-          keyboardType="number-pad"
-          maxLength={6}
-          value={password}
-          onChangeText={(t) => { setPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
-          onSubmitEditing={handleUnlock}
-          autoFocus
-        />
-        
-        {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
-
-        <Button onPress={handleUnlock} disabled={!password || isLoading} style={styles.unlockButton}>
-          {isLoading ? <ActivityIndicator color="#FFF" /> : "Unlock"}
-        </Button>
-
-        <Pressable style={styles.forgotButton} onPress={() => setShowResetModal(true)}>
-          <ThemedText style={[styles.forgotText, { color: theme.textSecondary }]}>
-            Forgot password?
+      {hasLocalProfile ? (
+        <>
+          <ThemedText style={styles.greeting}>Hi, {userName}</ThemedText>
+          {userUsername ? (
+            <ThemedText style={[styles.usernameText, { color: theme.textSecondary }]}>@{userUsername}</ThemedText>
+          ) : null}
+          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Enter your PIN to continue
           </ThemedText>
-        </Pressable>
 
-        <View style={styles.dividerContainer}>
-          <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-          <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
-          <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
-        </View>
+          <View style={styles.formContainer}>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: error ? "#FF3B30" : theme.border }]}
+              placeholder="PIN"
+              placeholderTextColor={theme.textSecondary}
+              secureTextEntry
+              keyboardType="number-pad"
+              maxLength={6}
+              value={password}
+              onChangeText={(t) => { setPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
+              onSubmitEditing={handleUnlock}
+              autoFocus
+            />
+            
+            {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
 
-        <Pressable style={styles.newAccountButton} onPress={() => setShowNewAccountModal(true)}>
-          <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
-            Create New Account
+            <Button onPress={handleUnlock} disabled={!password || isLoading} style={styles.unlockButton}>
+              {isLoading ? <ActivityIndicator color="#FFF" /> : "Unlock"}
+            </Button>
+
+            <Pressable style={styles.forgotButton} onPress={() => setShowResetModal(true)}>
+              <ThemedText style={[styles.forgotText, { color: theme.textSecondary }]}>
+                Forgot PIN?
+              </ThemedText>
+            </Pressable>
+
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            </View>
+
+            <Pressable style={styles.newAccountButton} onPress={() => setShowNewAccountModal(true)}>
+              <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
+                Create New Account
+              </ThemedText>
+            </Pressable>
+          </View>
+        </>
+      ) : (
+        <>
+          <ThemedText style={styles.greeting}>Welcome Back</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Enter your username and PIN to login
           </ThemedText>
-        </Pressable>
-      </View>
+
+          <View style={styles.formContainer}>
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Username</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="Your username"
+                placeholderTextColor={theme.textSecondary}
+                value={username}
+                onChangeText={(t) => { setUsername(t.toLowerCase().replace(/[^a-z0-9_]/g, "")); setError(""); }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>PIN</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: error ? "#FF3B30" : theme.border }]}
+                placeholder="Your PIN"
+                placeholderTextColor={theme.textSecondary}
+                secureTextEntry
+                keyboardType="number-pad"
+                maxLength={6}
+                value={password}
+                onChangeText={(t) => { setPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
+                onSubmitEditing={handleLogin}
+              />
+            </View>
+            
+            {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
+
+            <Button onPress={handleLogin} disabled={!username || !password || isLoading} style={styles.unlockButton}>
+              {isLoading ? <ActivityIndicator color="#FFF" /> : "Login"}
+            </Button>
+
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+              <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
+              <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+            </View>
+
+            <Pressable style={styles.newAccountButton} onPress={() => setShowNewAccountModal(true)}>
+              <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
+                Create New Account
+              </ThemedText>
+            </Pressable>
+          </View>
+        </>
+      )}
 
       <Modal visible={showResetModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -150,7 +243,7 @@ export default function LoginScreen() {
           <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
             <ThemedText style={styles.modalTitle}>Create New Account?</ThemedText>
             <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
-              This will permanently delete your current profile, challenge progress, photos, and all logged data to create a fresh account.
+              This will start the setup process for a new account.
             </ThemedText>
             <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
               Type "confirm" to proceed:
@@ -210,6 +303,13 @@ const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
     gap: Spacing.lg,
+  },
+  inputGroup: {
+    gap: Spacing.xs,
+  },
+  inputLabel: {
+    ...Typography.footnote,
+    marginLeft: Spacing.xs,
   },
   input: {
     height: Spacing.inputHeight,
