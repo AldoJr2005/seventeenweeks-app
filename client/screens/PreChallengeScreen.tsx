@@ -332,7 +332,8 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
                 <View>
                   <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Fasting</ThemedText>
                   <ThemedText style={styles.planValue}>
-                    {challenge.fastingType.replace("_", ":")} ({challenge.eatingStartTime} - {challenge.eatingEndTime})
+                    {challenge.fastingType.replace("_", ":")}
+                    {challenge.eatingStartTime && challenge.eatingEndTime ? ` (${challenge.eatingStartTime} - ${challenge.eatingEndTime})` : ""}
                   </ThemedText>
                 </View>
               </View>
