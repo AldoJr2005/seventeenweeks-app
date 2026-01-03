@@ -165,7 +165,7 @@ export default function LoginScreen() {
               <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
             </View>
 
-            <Pressable style={styles.newAccountButton} onPress={() => setShowNewAccountModal(true)}>
+            <Pressable style={styles.newAccountButton} onPress={() => startNewAccount()}>
               <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
                 Create New Account
               </ThemedText>
