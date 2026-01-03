@@ -1,6 +1,7 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import { Platform } from "react-native";
+import { getApiUrl } from "@/lib/query-client";
 
 export type PhotoStatus = "available" | "missing" | "none";
 
@@ -79,11 +80,30 @@ function isRemoteUri(uri: string): boolean {
          uriLower.startsWith("data:");
 }
 
+function isRelativeServerUri(uri: string): boolean {
+  if (!uri) return false;
+  return uri.startsWith("/") && !uri.startsWith("//");
+}
+
+function resolveToFullUrl(uri: string): string {
+  if (!uri) return uri;
+  if (isRemoteUri(uri)) return uri;
+  if (isRelativeServerUri(uri)) {
+    try {
+      const baseUrl = getApiUrl();
+      return new URL(uri, baseUrl).href;
+    } catch (e) {
+      return uri;
+    }
+  }
+  return uri;
+}
+
 export async function checkPhotoExists(uri: string | null | undefined): Promise<boolean> {
   if (!uri) return false;
   if (Platform.OS === "web") return true;
   
-  if (isRemoteUri(uri)) {
+  if (isRemoteUri(uri) || isRelativeServerUri(uri)) {
     return true;
   }
   
@@ -242,8 +262,9 @@ export async function getPhotoBase64ForPDF(imageUri: string | null | undefined):
     return imageUri;
   }
   
-  if (Platform.OS === "web" || isRemoteUri(imageUri)) {
-    return fetchRemoteImageAsBase64(imageUri);
+  if (Platform.OS === "web" || isRemoteUri(imageUri) || isRelativeServerUri(imageUri)) {
+    const fullUrl = resolveToFullUrl(imageUri);
+    return fetchRemoteImageAsBase64(fullUrl);
   }
   
   try {
