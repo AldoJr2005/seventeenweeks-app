@@ -30,7 +30,8 @@ Preferred communication style: Simple, everyday language.
 ### Data Model
 Core entities stored in PostgreSQL:
 - **challenges**: 17-week challenge configuration (start date, weights, goals, reminder times)
-- **dayLogs**: Daily nutrition tracking (calories, macros, notes)
+- **dayLogs**: Daily nutrition tracking (calories, macros, notes) - legacy, for PDF export compatibility
+- **foodEntries**: MyFitnessPal-style meal-based food logging (Breakfast/Lunch/Dinner/Snacks) with per-serving nutrition data, barcode support
 - **workoutLogs**: Daily workout entries (type: Push/Pull/Legs/Plyo-Abs/Rest)
 - **weeklyPhotos**: Monday progress photos
 - **weeklyCheckIns**: Weekly weigh-ins and body measurements
@@ -66,6 +67,14 @@ Core entities stored in PostgreSQL:
 
 **PDF Export**: Client-side PDF generation using expo-print for challenge summaries and sharing.
 
+**Nutrition Tracking**: MyFitnessPal-style meal-based logging with:
+- Swipeable dashboard cards (Calories/Macros) with progress rings
+- Meal categories: Breakfast, Lunch, Dinner, Snacks
+- Per-serving nutrition data with serving size calculations
+- Barcode scanning via expo-camera with OpenFoodFacts API integration
+- Manual food entry with brand and nutrition info
+- Daily totals calculated from food entries
+
 ## External Dependencies
 
 ### Database
@@ -79,6 +88,7 @@ Core entities stored in PostgreSQL:
 - expo-haptics: Tactile feedback
 - expo-print/expo-sharing: PDF generation and sharing
 - expo-blur/expo-glass-effect: iOS-style visual effects
+- expo-camera: Barcode scanning for food entry lookup
 
 ### Client Libraries
 - @tanstack/react-query: Server state management and caching

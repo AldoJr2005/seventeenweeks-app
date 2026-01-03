@@ -5,7 +5,8 @@ import {
   insertChallengeSchema, insertDayLogSchema, insertWorkoutLogSchema,
   insertWeeklyPhotoSchema, insertWeeklyCheckInSchema, insertHabitLogSchema,
   insertUserProfileSchema, insertAppSettingsSchema,
-  insertBaselineSnapshotSchema, insertWeeklyReflectionSchema
+  insertBaselineSnapshotSchema, insertWeeklyReflectionSchema,
+  insertFoodEntrySchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -474,6 +475,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update reflection" });
+    }
+  });
+
+  // Food entries routes
+  app.get("/api/food-entries", async (req, res) => {
+    try {
+      const challengeId = req.query.challengeId as string;
+      const date = req.query.date as string;
+      const startDate = req.query.startDate as string;
+      const endDate = req.query.endDate as string;
+
+      if (!challengeId) {
+        return res.status(400).json({ error: "challengeId required" });
+      }
+
+      if (startDate && endDate) {
+        const entries = await storage.getFoodEntriesByDateRange(challengeId, startDate, endDate);
+        return res.json(entries);
+      }
+
+      if (!date) {
+        return res.status(400).json({ error: "date or startDate/endDate required" });
+      }
+
+      const entries = await storage.getFoodEntries(challengeId, date);
+      res.json(entries);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch food entries" });
+    }
+  });
+
+  app.post("/api/food-entries", async (req, res) => {
+    try {
+      const parsed = insertFoodEntrySchema.parse(req.body);
+      const entry = await storage.createFoodEntry(parsed);
+      res.status(201).json(entry);
+    } catch (error: any) {
+      console.error("Food entry creation error:", error);
+      res.status(400).json({ error: error.message || "Invalid food entry data" });
+    }
+  });
+
+  app.patch("/api/food-entries/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateFoodEntry(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Food entry not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update food entry" });
+    }
+  });
+
+  app.delete("/api/food-entries/:id", async (req, res) => {
+    try {
+      await storage.deleteFoodEntry(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete food entry" });
     }
   });
 

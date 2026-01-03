@@ -9,6 +9,7 @@ import type {
   UserProfile, InsertUserProfile,
   AppSettings, InsertAppSettings,
   BaselineSnapshot, InsertBaselineSnapshot,
+  FoodEntry, InsertFoodEntry,
 } from "@shared/schema";
 
 const BASE_URL = getApiUrl();
@@ -90,5 +91,15 @@ export const api = {
     get: (challengeId: string) => fetchApi<BaselineSnapshot | null>(`/api/baseline/${challengeId}`),
     create: (data: InsertBaselineSnapshot) => apiRequest<BaselineSnapshot>("POST", "/api/baseline", data),
     update: (id: string, data: Partial<InsertBaselineSnapshot>) => apiRequest<BaselineSnapshot>("PATCH", `/api/baseline/${id}`, data),
+  },
+
+  foodEntries: {
+    getByDate: (challengeId: string, date: string) => 
+      fetchApi<FoodEntry[]>(`/api/food-entries?challengeId=${challengeId}&date=${date}`),
+    getByDateRange: (challengeId: string, startDate: string, endDate: string) => 
+      fetchApi<FoodEntry[]>(`/api/food-entries?challengeId=${challengeId}&startDate=${startDate}&endDate=${endDate}`),
+    create: (data: InsertFoodEntry) => apiRequest<FoodEntry>("POST", "/api/food-entries", data),
+    update: (id: string, data: Partial<InsertFoodEntry>) => apiRequest<FoodEntry>("PATCH", `/api/food-entries/${id}`, data),
+    delete: (id: string) => apiRequest<void>("DELETE", `/api/food-entries/${id}`),
   },
 };

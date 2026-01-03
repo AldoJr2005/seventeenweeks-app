@@ -1,0 +1,199 @@
+I want to redesign and upgrade the Nutrition / Calories feature to work more like MyFitnessPal, while keeping the same Apple-style dark UI used throughout the app.
+
+1) New “Nutrition Dashboard” (like MFP cards)
+
+Replace the current simple nutrition input screen with a dashboard card UI:
+
+At the top show: Calories summary card
+
+Big number in the center: Remaining Calories
+
+Small formula text: Remaining = Goal - Food + Exercise (exercise can be 0 for now if we don’t track it)
+
+Right side mini breakdown:
+
+Base Goal
+
+Food
+
+Exercise (optional/0)
+
+Add horizontal swipe between cards (like a carousel):
+
+Calories card (Remaining)
+
+Macros card (Carbs / Fat / Protein progress rings)
+
+Optional extra cards (Fiber / Sugar / Sodium / Cholesterol) as progress bars (simple “0/goal”)
+
+The swipe should feel smooth and native (paging enabled, dots indicator).
+
+2) Add Meal-Based Food Logging
+
+Instead of only entering totals for the day, let users log foods by meal:
+
+Meals:
+
+Breakfast
+
+Lunch
+
+Dinner
+
+Snacks
+
+On the Nutrition screen, show a list section:
+
+Breakfast (total calories + macros for that meal)
+
+Lunch
+
+Dinner
+
+Snacks
+
+Daily Totals summary at bottom
+
+Each meal row should have a “+ Add Food” button.
+
+3) Manual Food Entry Flow (simple + fast)
+
+When user taps “Add Food”:
+
+They choose a meal (or it pre-fills based on where they tapped)
+
+They can manually input:
+
+Food name (required)
+
+Calories (required)
+
+Protein (g), Carbs (g), Fat (g) (optional but recommended)
+
+Serving size label (optional, example “1 cup”, “100g”, “1 bar”)
+
+Number of servings (default 1)
+
+The totals should multiply based on servings.
+
+Save the entry into SQLite with:
+
+date
+
+mealType
+
+foodName
+
+caloriesPerServing
+
+proteinPerServing
+
+carbsPerServing
+
+fatPerServing
+
+servingLabel
+
+servingsCount
+
+createdAt
+
+4) Barcode Scan Food Entry (auto nutrition)
+
+Add a Barcode Scan option like MyFitnessPal:
+
+Add a button: “Scan Barcode”
+
+Use expo-camera to scan barcodes.
+
+After scan:
+
+Show a loading state: “Looking up nutrition…”
+
+Look up nutrition facts using a food database API (choose the best option):
+
+Prefer OpenFoodFacts (free) OR another accessible API key approach.
+
+Display a confirmation screen like:
+
+Product name + brand (if available)
+
+Serving size
+
+Calories / Protein / Carbs / Fat per serving
+
+Let user edit:
+
+serving size label
+
+number of servings
+
+meal selection (Breakfast/Lunch/Dinner/Snack)
+
+Then save it exactly like manual entries.
+
+Important:
+
+If barcode lookup fails, show a nice error and offer “Manual entry” pre-filled with barcode number + blank macros.
+
+5) Progress Rings + Remaining Calories Calculation
+
+Daily totals should be computed from the foods logged that day.
+
+Remaining Calories = Calorie Goal - total food calories (+ exercise later)
+
+Macros progress:
+
+show totals + goals (goals come from setup / settings)
+
+Example: Carbs 80g / 130g, Fat 15g / 45g, Protein 120g / 200g
+
+If macro goals don’t exist yet, create them in Settings and store them in the user profile so the dashboard can use them.
+
+6) UI/UX requirements (match Apple style)
+
+Keep the same dark theme, rounded cards, minimal borders, soft shadows.
+
+Spacing and typography should feel like iOS.
+
+Use consistent button styles used in the app.
+
+The dashboard should look clean: not cramped, no tiny text, nothing cut off.
+
+7) PDF export update (nutrition section)
+
+Update PDF generation so nutrition isn’t “splattered”:
+
+For each week PDF and full challenge PDF:
+
+Add a Nutrition Summary card per week:
+
+Avg calories/day
+
+Avg protein/carbs/fat
+
+Compliance % (days logged / 7)
+
+For each day: show calories + macros (a clean table)
+
+If space allows, show small macro bars or mini ring graphics.
+
+Ensure text never clips and margins are consistent.
+
+8) Acceptance checklist (must pass)
+
+I can swipe between Calories and Macros cards.
+
+I can add foods into Breakfast/Lunch/Dinner/Snacks.
+
+Daily totals update automatically.
+
+Barcode scanning works and pulls nutrition data OR gracefully falls back to manual entry.
+
+Servings multiplier works.
+
+Nutrition goals appear and update from Settings.
+
+PDF nutrition section looks modern and readable with proper spacing.
+
+Build this step-by-step, update database schema if needed, and refactor the current nutrition logging to use the new meal-based food log system without breaking existing screens.

@@ -1,402 +1,439 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert } from "react-native";
+import React, { useState, useRef, useMemo } from "react";
+import { View, StyleSheet, Pressable, ScrollView, Dimensions, FlatList } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/Button";
-import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { Card } from "@/components/Card";
+import { ProgressRing } from "@/components/ProgressRing";
 import { useChallenge } from "@/hooks/useChallenge";
-import { useDayLog, useCreateDayLog, useUpdateDayLog } from "@/hooks/useDayLogs";
+import { useFoodEntries, useDeleteFoodEntry } from "@/hooks/useFoodEntries";
 import { getToday, formatLongDate, addDays } from "@/lib/date-utils";
 import type { LogStackParamList } from "@/navigation/LogStackNavigator";
-import type { DayLog, Challenge } from "@shared/schema";
+import type { Challenge, FoodEntry, MealType } from "@shared/schema";
+import { MEAL_TYPES } from "@shared/schema";
 
 type RouteParams = RouteProp<LogStackParamList, "NutritionLog">;
+type NavigationProp = NativeStackNavigationProp<LogStackParamList>;
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
+
+const MEAL_ICONS: Record<MealType, keyof typeof Feather.glyphMap> = {
+  Breakfast: "sunrise",
+  Lunch: "sun",
+  Dinner: "moon",
+  Snacks: "coffee",
+};
 
 export default function NutritionLogScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
+  const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
+  const scrollRef = useRef<ScrollView>(null);
 
   const date = route.params?.date || getToday();
   const { data: challenge } = useChallenge();
-  const { data: existingLog, isLoading } = useDayLog(date);
-  const createDayLog = useCreateDayLog();
-  const updateDayLog = useUpdateDayLog();
-
-  const [calories, setCalories] = useState("");
-  const [protein, setProtein] = useState("");
-  const [carbs, setCarbs] = useState("");
-  const [fat, setFat] = useState("");
-  const [notes, setNotes] = useState("");
-  const [isSkipped, setIsSkipped] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  
   const challengeData = challenge as Challenge | undefined;
-  const targetCalories = challengeData?.targetCalories || 0;
-  const targetProtein = challengeData?.targetProteinGrams || 0;
-  const targetCarbs = challengeData?.targetCarbsGrams || 0;
-  const targetFat = challengeData?.targetFatGrams || 0;
+  const { data: foodEntries } = useFoodEntries(challengeData?.id, date);
+  const deleteFoodEntry = useDeleteFoodEntry();
 
-  useEffect(() => {
-    if (existingLog) {
-      const log = existingLog as DayLog;
-      setCalories(log.calories?.toString() || "");
-      setProtein(log.protein?.toString() || "");
-      setCarbs(log.carbs?.toString() || "");
-      setFat(log.fat?.toString() || "");
-      setNotes(log.notes || "");
-      setIsSkipped(log.skipped || false);
-    }
-  }, [existingLog]);
+  const [cardIndex, setCardIndex] = useState(0);
 
-  const handleSave = async () => {
-    if (!challenge) return;
+  const targetCalories = challengeData?.targetCalories || 2000;
+  const targetProtein = challengeData?.targetProteinGrams || 150;
+  const targetCarbs = challengeData?.targetCarbsGrams || 200;
+  const targetFat = challengeData?.targetFatGrams || 65;
 
-    const data = {
-      challengeId: challenge.id,
-      date,
-      calories: calories ? parseInt(calories) : null,
-      protein: protein ? parseInt(protein) : null,
-      carbs: carbs ? parseInt(carbs) : null,
-      fat: fat ? parseInt(fat) : null,
-      notes: notes || null,
-      skipped: isSkipped,
-      skippedReason: isSkipped ? "User marked as skipped" : null,
-    };
+  const totals = useMemo(() => {
+    if (!foodEntries) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    return (foodEntries as FoodEntry[]).reduce((acc, entry) => ({
+      calories: acc.calories + Math.round(entry.caloriesPerServing * entry.servingsCount),
+      protein: acc.protein + Math.round((entry.proteinPerServing || 0) * entry.servingsCount),
+      carbs: acc.carbs + Math.round((entry.carbsPerServing || 0) * entry.servingsCount),
+      fat: acc.fat + Math.round((entry.fatPerServing || 0) * entry.servingsCount),
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+  }, [foodEntries]);
 
-    try {
-      if (existingLog) {
-        await updateDayLog.mutateAsync({ id: (existingLog as DayLog).id, data });
-      } else {
-        await createDayLog.mutateAsync(data);
-      }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setShowConfirmation(true);
-      setTimeout(() => {
-        navigation.goBack();
-      }, 800);
-    } catch (error) {
-      Alert.alert("Error", "Failed to save nutrition log");
-    }
-  };
-  
-  const caloriesDiff = calories && targetCalories ? parseInt(calories) - targetCalories : 0;
+  const mealGroups = useMemo((): Partial<Record<MealType, FoodEntry[]>> => {
+    if (!foodEntries) return {};
+    return (foodEntries as FoodEntry[]).reduce((acc, entry) => {
+      const meal = entry.mealType as MealType;
+      if (!acc[meal]) acc[meal] = [];
+      acc[meal]!.push(entry);
+      return acc;
+    }, {} as Partial<Record<MealType, FoodEntry[]>>);
+  }, [foodEntries]);
 
-  const handleSkip = () => {
-    setIsSkipped(!isSkipped);
+  const getMealTotals = (entries: FoodEntry[] | undefined) => {
+    if (!entries) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    return entries.reduce((acc, entry) => ({
+      calories: acc.calories + Math.round(entry.caloriesPerServing * entry.servingsCount),
+      protein: acc.protein + Math.round((entry.proteinPerServing || 0) * entry.servingsCount),
+      carbs: acc.carbs + Math.round((entry.carbsPerServing || 0) * entry.servingsCount),
+      fat: acc.fat + Math.round((entry.fatPerServing || 0) * entry.servingsCount),
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
   };
 
-  const isSaving = createDayLog.isPending || updateDayLog.isPending;
-  const isValid = isSkipped || calories;
+  const remainingCalories = targetCalories - totals.calories;
 
-  if (isLoading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
-  }
+  const handleScroll = (event: any) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / CARD_WIDTH);
+    if (index !== cardIndex) {
+      setCardIndex(index);
+      Haptics.selectionAsync();
+    }
+  };
+
+  const handleAddFood = (mealType: MealType) => {
+    navigation.navigate("AddFood", { date, mealType });
+  };
+
+  const handleEditFood = (entry: FoodEntry) => {
+    navigation.navigate("AddFood", { date, mealType: entry.mealType as MealType, editId: entry.id });
+  };
+
+  const navigateDate = (offset: number) => {
+    const newDate = addDays(date, offset);
+    navigation.setParams({ date: newDate });
+    Haptics.selectionAsync();
+  };
 
   return (
-    <KeyboardAwareScrollViewCompat
+    <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={[
-        styles.container,
-        { paddingTop: headerHeight + Spacing.lg, paddingBottom: insets.bottom + Spacing.xl }
-      ]}
+      contentContainerStyle={{
+        paddingTop: headerHeight + Spacing.lg,
+        paddingBottom: tabBarHeight + Spacing.xl,
+      }}
+      scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
-      <ThemedText style={[styles.dateText, { color: theme.textSecondary }]}>
-        {formatLongDate(date)}
-      </ThemedText>
+      <View style={styles.dateNav}>
+        <Pressable onPress={() => navigateDate(-1)} style={styles.dateArrow}>
+          <Feather name="chevron-left" size={24} color={theme.primary} />
+        </Pressable>
+        <ThemedText style={styles.dateText}>{formatLongDate(date)}</ThemedText>
+        <Pressable onPress={() => navigateDate(1)} style={styles.dateArrow}>
+          <Feather name="chevron-right" size={24} color={theme.primary} />
+        </Pressable>
+      </View>
 
-      {isSkipped ? (
-        <View style={[styles.skippedContainer, { backgroundColor: theme.backgroundDefault }]}>
-          <Feather name="x-circle" size={48} color={theme.textSecondary} />
-          <ThemedText style={[styles.skippedText, { color: theme.textSecondary }]}>
-            Marked as skipped
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={styles.cardsContainer}
+        snapToInterval={CARD_WIDTH + Spacing.md}
+        decelerationRate="fast"
+      >
+        <Card style={{ ...styles.dashboardCard, width: CARD_WIDTH }}>
+          <ThemedText style={styles.cardLabel}>Remaining</ThemedText>
+          <ThemedText style={[styles.bigNumber, { color: remainingCalories >= 0 ? theme.success : theme.warning }]}>
+            {remainingCalories}
           </ThemedText>
-          <Pressable onPress={handleSkip}>
-            <ThemedText style={[styles.undoText, { color: theme.primary }]}>
-              Undo
-            </ThemedText>
-          </Pressable>
-        </View>
-      ) : (
-        <>
-          <View style={styles.inputGroup}>
-            <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
-              Calories {targetCalories > 0 ? `(Target: ${targetCalories})` : ""}
-            </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                styles.largeInput,
-                { 
-                  backgroundColor: theme.backgroundDefault,
-                  color: theme.text,
-                  borderColor: theme.border,
-                }
-              ]}
-              placeholder="0"
-              placeholderTextColor={theme.textSecondary}
-              keyboardType="number-pad"
-              value={calories}
-              onChangeText={setCalories}
-              autoFocus
+          <ThemedText style={[styles.cardLabel, { color: theme.textSecondary }]}>
+            calories
+          </ThemedText>
+          
+          <View style={styles.formulaRow}>
+            <View style={styles.formulaItem}>
+              <ThemedText style={[styles.formulaValue, { color: theme.textSecondary }]}>{targetCalories}</ThemedText>
+              <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Goal</ThemedText>
+            </View>
+            <ThemedText style={[styles.formulaOperator, { color: theme.textSecondary }]}>-</ThemedText>
+            <View style={styles.formulaItem}>
+              <ThemedText style={[styles.formulaValue, { color: theme.textSecondary }]}>{totals.calories}</ThemedText>
+              <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Food</ThemedText>
+            </View>
+            <ThemedText style={[styles.formulaOperator, { color: theme.textSecondary }]}>=</ThemedText>
+            <View style={styles.formulaItem}>
+              <ThemedText style={[styles.formulaValue, { color: remainingCalories >= 0 ? theme.success : theme.warning }]}>{remainingCalories}</ThemedText>
+              <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Left</ThemedText>
+            </View>
+          </View>
+        </Card>
+
+        <Card style={{ ...styles.dashboardCard, width: CARD_WIDTH }}>
+          <ThemedText style={styles.cardLabel}>Macros</ThemedText>
+          <View style={styles.macrosRings}>
+            <ProgressRing
+              progress={totals.carbs / targetCarbs}
+              color="#FF9500"
+              size={70}
+              strokeWidth={7}
+              label="Carbs"
+              value={`${totals.carbs}/${targetCarbs}`}
             />
-            {caloriesDiff > 0 && targetCalories > 0 ? (
-              <ThemedText style={[styles.targetHint, { color: theme.textSecondary }]}>
-                Above target by {caloriesDiff} cal
-              </ThemedText>
-            ) : null}
-          </View>
-
-          <View style={styles.macrosRow}>
-            <View style={styles.macroInput}>
-              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
-                Protein (g)
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.input,
-                  { 
-                    backgroundColor: theme.backgroundDefault,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  }
-                ]}
-                placeholder="0"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="number-pad"
-                value={protein}
-                onChangeText={setProtein}
-              />
-              {targetProtein > 0 ? (
-                <ThemedText style={[styles.macroHint, { color: theme.textSecondary }]}>
-                  Target: {targetProtein}g
-                </ThemedText>
-              ) : null}
-            </View>
-
-            <View style={styles.macroInput}>
-              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
-                Carbs (g)
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.input,
-                  { 
-                    backgroundColor: theme.backgroundDefault,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  }
-                ]}
-                placeholder="0"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="number-pad"
-                value={carbs}
-                onChangeText={setCarbs}
-              />
-              {targetCarbs > 0 ? (
-                <ThemedText style={[styles.macroHint, { color: theme.textSecondary }]}>
-                  Target: {targetCarbs}g
-                </ThemedText>
-              ) : null}
-            </View>
-
-            <View style={styles.macroInput}>
-              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
-                Fat (g)
-              </ThemedText>
-              <TextInput
-                style={[
-                  styles.input,
-                  { 
-                    backgroundColor: theme.backgroundDefault,
-                    color: theme.text,
-                    borderColor: theme.border,
-                  }
-                ]}
-                placeholder="0"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="number-pad"
-                value={fat}
-                onChangeText={setFat}
-              />
-              {targetFat > 0 ? (
-                <ThemedText style={[styles.macroHint, { color: theme.textSecondary }]}>
-                  Target: {targetFat}g
-                </ThemedText>
-              ) : null}
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
-              Notes (optional)
-            </ThemedText>
-            <TextInput
-              style={[
-                styles.input,
-                styles.notesInput,
-                { 
-                  backgroundColor: theme.backgroundDefault,
-                  color: theme.text,
-                  borderColor: theme.border,
-                }
-              ]}
-              placeholder="Add notes..."
-              placeholderTextColor={theme.textSecondary}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              textAlignVertical="top"
+            <ProgressRing
+              progress={totals.fat / targetFat}
+              color="#FF3B30"
+              size={70}
+              strokeWidth={7}
+              label="Fat"
+              value={`${totals.fat}/${targetFat}`}
+            />
+            <ProgressRing
+              progress={totals.protein / targetProtein}
+              color="#34C759"
+              size={70}
+              strokeWidth={7}
+              label="Protein"
+              value={`${totals.protein}/${targetProtein}`}
             />
           </View>
-        </>
-      )}
+        </Card>
+      </ScrollView>
 
-      {showConfirmation ? (
-        <View style={[styles.confirmationContainer, { backgroundColor: theme.success + "15" }]}>
-          <Feather name="check-circle" size={24} color={theme.success} />
-          <ThemedText style={[styles.confirmationText, { color: theme.success }]}>
-            Nutrition logged.
-          </ThemedText>
-        </View>
-      ) : (
-        <View style={styles.buttonContainer}>
-          <Pressable
-            style={[styles.skipButton, { borderColor: theme.border }]}
-            onPress={handleSkip}
-          >
-            <Feather name={isSkipped ? "edit-3" : "x"} size={20} color={theme.textSecondary} />
-            <ThemedText style={{ color: theme.textSecondary }}>
-              {isSkipped ? "Log Instead" : "Skip Day"}
-            </ThemedText>
-          </Pressable>
+      <View style={styles.dotsContainer}>
+        {[0, 1].map((i) => (
+          <View
+            key={i}
+            style={[
+              styles.dot,
+              { backgroundColor: i === cardIndex ? theme.primary : theme.backgroundTertiary }
+            ]}
+          />
+        ))}
+      </View>
 
-          <Button
-            onPress={handleSave}
-            disabled={!isValid || isSaving}
-            style={styles.saveButton}
-          >
-            {isSaving ? "Saving..." : existingLog ? "Update" : "Save"}
-          </Button>
+      <View style={styles.mealsContainer}>
+        {MEAL_TYPES.map((mealType) => {
+          const mealEntries = mealGroups[mealType] || [];
+          const mealTotals = getMealTotals(mealEntries);
+
+          return (
+            <Card key={mealType} style={styles.mealCard}>
+              <View style={styles.mealHeader}>
+                <View style={styles.mealTitleRow}>
+                  <Feather name={MEAL_ICONS[mealType]} size={20} color={theme.primary} />
+                  <ThemedText style={styles.mealTitle}>{mealType}</ThemedText>
+                </View>
+                {mealEntries.length > 0 ? (
+                  <ThemedText style={[styles.mealCalories, { color: theme.textSecondary }]}>
+                    {mealTotals.calories} cal
+                  </ThemedText>
+                ) : null}
+              </View>
+
+              {mealEntries.map((entry: FoodEntry) => (
+                <Pressable
+                  key={entry.id}
+                  style={styles.foodEntry}
+                  onPress={() => handleEditFood(entry)}
+                >
+                  <View style={styles.foodInfo}>
+                    <ThemedText style={styles.foodName} numberOfLines={1}>
+                      {entry.foodName}
+                    </ThemedText>
+                    <ThemedText style={[styles.foodDetails, { color: theme.textSecondary }]}>
+                      {entry.servingsCount > 1 ? `${entry.servingsCount} x ` : ""}
+                      {entry.servingLabel || "serving"} - {Math.round(entry.caloriesPerServing * entry.servingsCount)} cal
+                    </ThemedText>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={theme.textSecondary} />
+                </Pressable>
+              ))}
+
+              <Pressable
+                style={[styles.addFoodButton, { borderColor: theme.border }]}
+                onPress={() => handleAddFood(mealType)}
+              >
+                <Feather name="plus" size={16} color={theme.primary} />
+                <ThemedText style={{ color: theme.primary }}>Add Food</ThemedText>
+              </Pressable>
+            </Card>
+          );
+        })}
+      </View>
+
+      <Card style={{ ...styles.totalsCard, marginHorizontal: Spacing.lg }}>
+        <ThemedText style={styles.totalsTitle}>Daily Totals</ThemedText>
+        <View style={styles.totalsGrid}>
+          <View style={styles.totalItem}>
+            <ThemedText style={styles.totalValue}>{totals.calories}</ThemedText>
+            <ThemedText style={[styles.totalLabel, { color: theme.textSecondary }]}>/ {targetCalories} cal</ThemedText>
+          </View>
+          <View style={styles.totalItem}>
+            <ThemedText style={styles.totalValue}>{totals.protein}g</ThemedText>
+            <ThemedText style={[styles.totalLabel, { color: theme.textSecondary }]}>/ {targetProtein}g protein</ThemedText>
+          </View>
+          <View style={styles.totalItem}>
+            <ThemedText style={styles.totalValue}>{totals.carbs}g</ThemedText>
+            <ThemedText style={[styles.totalLabel, { color: theme.textSecondary }]}>/ {targetCarbs}g carbs</ThemedText>
+          </View>
+          <View style={styles.totalItem}>
+            <ThemedText style={styles.totalValue}>{totals.fat}g</ThemedText>
+            <ThemedText style={[styles.totalLabel, { color: theme.textSecondary }]}>/ {targetFat}g fat</ThemedText>
+          </View>
         </View>
-      )}
-    </KeyboardAwareScrollViewCompat>
+      </Card>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
+  dateNav: {
+    flexDirection: "row",
     alignItems: "center",
-  },
-  container: {
+    justifyContent: "center",
+    marginBottom: Spacing.lg,
     paddingHorizontal: Spacing.lg,
+  },
+  dateArrow: {
+    padding: Spacing.sm,
   },
   dateText: {
-    ...Typography.subheadline,
-    textAlign: "center",
-    marginBottom: Spacing.xl,
+    ...Typography.headline,
+    fontWeight: "600",
+    marginHorizontal: Spacing.lg,
   },
-  inputGroup: {
-    marginBottom: Spacing.xl,
-  },
-  inputLabel: {
-    ...Typography.subheadline,
-    marginBottom: Spacing.sm,
-  },
-  input: {
-    height: Spacing.inputHeight,
-    borderRadius: BorderRadius.sm,
+  cardsContainer: {
     paddingHorizontal: Spacing.lg,
-    borderWidth: 1,
-    ...Typography.body,
-  },
-  largeInput: {
-    height: 64,
-    fontSize: 28,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  macrosRow: {
-    flexDirection: "row",
     gap: Spacing.md,
-    marginBottom: Spacing.xl,
   },
-  macroInput: {
-    flex: 1,
+  dashboardCard: {
+    padding: Spacing.xl,
+    alignItems: "center",
   },
-  targetHint: {
-    ...Typography.footnote,
-    marginTop: Spacing.xs,
-    textAlign: "center",
+  cardLabel: {
+    ...Typography.subheadline,
+    marginBottom: Spacing.xs,
   },
-  macroHint: {
-    ...Typography.caption,
-    marginTop: Spacing.xs,
-    textAlign: "center",
+  bigNumber: {
+    fontSize: 64,
+    fontWeight: "700",
+    lineHeight: 72,
   },
-  notesInput: {
-    height: 100,
-    paddingTop: Spacing.md,
-  },
-  confirmationContainer: {
+  formulaRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    marginTop: "auto",
+    marginTop: Spacing.lg,
+    gap: Spacing.md,
   },
-  confirmationText: {
+  formulaItem: {
+    alignItems: "center",
+  },
+  formulaValue: {
     ...Typography.headline,
     fontWeight: "600",
   },
-  skippedContainer: {
-    alignItems: "center",
-    padding: Spacing["3xl"],
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.xl,
+  formulaLabel: {
+    ...Typography.caption,
   },
-  skippedText: {
+  formulaOperator: {
     ...Typography.headline,
+    fontWeight: "400",
+  },
+  macrosRings: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
     marginTop: Spacing.lg,
   },
-  undoText: {
-    ...Typography.body,
-    marginTop: Spacing.md,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    gap: Spacing.md,
-    marginTop: "auto",
-    paddingTop: Spacing.xl,
-  },
-  skipButton: {
-    flex: 1,
-    height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
+  dotsContainer: {
     flexDirection: "row",
     justifyContent: "center",
+    gap: Spacing.sm,
+    marginVertical: Spacing.lg,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  mealsContainer: {
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
+  },
+  mealCard: {
+    padding: Spacing.lg,
+  },
+  mealHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
+  mealTitleRow: {
+    flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
   },
-  saveButton: {
-    flex: 2,
+  mealTitle: {
+    ...Typography.headline,
+    fontWeight: "600",
+  },
+  mealCalories: {
+    ...Typography.subheadline,
+  },
+  foodEntry: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(128,128,128,0.2)",
+  },
+  foodInfo: {
+    flex: 1,
+  },
+  foodName: {
+    ...Typography.body,
+  },
+  foodDetails: {
+    ...Typography.caption,
+    marginTop: 2,
+  },
+  addFoodButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    marginTop: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderStyle: "dashed",
+  },
+  totalsCard: {
+    padding: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
+  totalsTitle: {
+    ...Typography.headline,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: Spacing.md,
+  },
+  totalsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  totalItem: {
+    width: "48%",
+    alignItems: "center",
+    paddingVertical: Spacing.sm,
+  },
+  totalValue: {
+    ...Typography.title3,
+    fontWeight: "700",
+  },
+  totalLabel: {
+    ...Typography.caption,
   },
 });

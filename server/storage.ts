@@ -1,5 +1,5 @@
 import {
-  challenges, dayLogs, workoutLogs, weeklyPhotos, weeklyCheckIns, habitLogs, reminderLogs, userProfiles, appSettings, baselineSnapshots, weeklyReflections,
+  challenges, dayLogs, workoutLogs, weeklyPhotos, weeklyCheckIns, habitLogs, reminderLogs, userProfiles, appSettings, baselineSnapshots, weeklyReflections, foodEntries,
   type Challenge, type InsertChallenge,
   type DayLog, type InsertDayLog,
   type WorkoutLog, type InsertWorkoutLog,
@@ -11,9 +11,10 @@ import {
   type AppSettings, type InsertAppSettings,
   type BaselineSnapshot, type InsertBaselineSnapshot,
   type WeeklyReflection, type InsertWeeklyReflection,
+  type FoodEntry, type InsertFoodEntry,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Challenge
@@ -77,6 +78,13 @@ export interface IStorage {
   getWeeklyReflections(challengeId: string): Promise<WeeklyReflection[]>;
   createWeeklyReflection(reflection: InsertWeeklyReflection): Promise<WeeklyReflection>;
   updateWeeklyReflection(id: string, reflection: Partial<InsertWeeklyReflection>): Promise<WeeklyReflection | undefined>;
+  
+  // Food Entries
+  getFoodEntries(challengeId: string, date: string): Promise<FoodEntry[]>;
+  getFoodEntriesByDateRange(challengeId: string, startDate: string, endDate: string): Promise<FoodEntry[]>;
+  createFoodEntry(entry: InsertFoodEntry): Promise<FoodEntry>;
+  updateFoodEntry(id: string, entry: Partial<InsertFoodEntry>): Promise<FoodEntry | undefined>;
+  deleteFoodEntry(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -282,6 +290,37 @@ export class DatabaseStorage implements IStorage {
   async updateWeeklyReflection(id: string, reflection: Partial<InsertWeeklyReflection>): Promise<WeeklyReflection | undefined> {
     const [updated] = await db.update(weeklyReflections).set({ ...reflection, updatedAt: new Date() }).where(eq(weeklyReflections.id, id)).returning();
     return updated || undefined;
+  }
+
+  // Food Entries
+  async getFoodEntries(challengeId: string, date: string): Promise<FoodEntry[]> {
+    return db.select().from(foodEntries)
+      .where(and(eq(foodEntries.challengeId, challengeId), eq(foodEntries.date, date)))
+      .orderBy(asc(foodEntries.createdAt));
+  }
+
+  async getFoodEntriesByDateRange(challengeId: string, startDate: string, endDate: string): Promise<FoodEntry[]> {
+    return db.select().from(foodEntries)
+      .where(and(
+        eq(foodEntries.challengeId, challengeId),
+        gte(foodEntries.date, startDate),
+        lte(foodEntries.date, endDate)
+      ))
+      .orderBy(asc(foodEntries.date), asc(foodEntries.createdAt));
+  }
+
+  async createFoodEntry(entry: InsertFoodEntry): Promise<FoodEntry> {
+    const [created] = await db.insert(foodEntries).values(entry).returning();
+    return created;
+  }
+
+  async updateFoodEntry(id: string, entry: Partial<InsertFoodEntry>): Promise<FoodEntry | undefined> {
+    const [updated] = await db.update(foodEntries).set(entry).where(eq(foodEntries.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteFoodEntry(id: string): Promise<void> {
+    await db.delete(foodEntries).where(eq(foodEntries.id, id));
   }
 }
 

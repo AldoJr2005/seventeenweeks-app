@@ -197,6 +197,27 @@ export const appSettings = pgTable("app_settings", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Food entries for meal-based logging (like MyFitnessPal)
+export const foodEntries = pgTable("food_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  challengeId: varchar("challenge_id").references(() => challenges.id),
+  date: date("date").notNull(),
+  mealType: varchar("meal_type", { length: 20 }).notNull(), // Breakfast, Lunch, Dinner, Snacks
+  foodName: text("food_name").notNull(),
+  brand: text("brand"),
+  barcode: varchar("barcode", { length: 50 }),
+  caloriesPerServing: integer("calories_per_serving").notNull(),
+  proteinPerServing: real("protein_per_serving").default(0),
+  carbsPerServing: real("carbs_per_serving").default(0),
+  fatPerServing: real("fat_per_serving").default(0),
+  fiberPerServing: real("fiber_per_serving").default(0),
+  sugarPerServing: real("sugar_per_serving").default(0),
+  sodiumPerServing: real("sodium_per_serving").default(0),
+  servingLabel: varchar("serving_label", { length: 50 }),
+  servingsCount: real("servings_count").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const challengesRelations = relations(challenges, ({ many, one }) => ({
   dayLogs: many(dayLogs),
@@ -207,6 +228,14 @@ export const challengesRelations = relations(challenges, ({ many, one }) => ({
   reminderLogs: many(reminderLogs),
   baselineSnapshot: one(baselineSnapshots),
   weeklyReflections: many(weeklyReflections),
+  foodEntries: many(foodEntries),
+}));
+
+export const foodEntriesRelations = relations(foodEntries, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [foodEntries.challengeId],
+    references: [challenges.id],
+  }),
 }));
 
 export const baselineSnapshotsRelations = relations(baselineSnapshots, ({ one }) => ({
@@ -277,6 +306,7 @@ export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ i
 export const insertAppSettingsSchema = createInsertSchema(appSettings).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBaselineSnapshotSchema = createInsertSchema(baselineSnapshots).omit({ id: true, createdAt: true });
 export const insertWeeklyReflectionSchema = createInsertSchema(weeklyReflections).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFoodEntrySchema = createInsertSchema(foodEntries).omit({ id: true, createdAt: true });
 
 // Types
 export type Challenge = typeof challenges.$inferSelect;
@@ -301,7 +331,13 @@ export type BaselineSnapshot = typeof baselineSnapshots.$inferSelect;
 export type InsertBaselineSnapshot = z.infer<typeof insertBaselineSnapshotSchema>;
 export type WeeklyReflection = typeof weeklyReflections.$inferSelect;
 export type InsertWeeklyReflection = z.infer<typeof insertWeeklyReflectionSchema>;
+export type FoodEntry = typeof foodEntries.$inferSelect;
+export type InsertFoodEntry = z.infer<typeof insertFoodEntrySchema>;
 
 // Workout types enum
 export const WORKOUT_TYPES = ["Push", "Pull", "Legs", "Plyo-Abs", "Rest"] as const;
 export type WorkoutType = typeof WORKOUT_TYPES[number];
+
+// Meal types enum
+export const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Snacks"] as const;
+export type MealType = typeof MEAL_TYPES[number];
