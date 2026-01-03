@@ -67,8 +67,13 @@ export default function HomeScreen() {
 
   const nutritionStatus = todayNutrition ? (todayNutrition.skipped ? "Skipped" : "Done") : "Pending";
   const workoutStatus = todayWorkout ? "Done" : "Pending";
-  const photoStatus = currentPhoto ? "Done" : "Pending";
-  const checkInStatus = currentCheckIn ? "Done" : "Pending";
+  const weeklyCheckInStatus = currentPhoto && currentCheckIn 
+    ? "Done" 
+    : currentPhoto 
+      ? "Weight pending" 
+      : currentCheckIn 
+        ? "Photo pending" 
+        : "Pending";
 
   const habitsCompleted = [
     todayHabits?.waterDone,
@@ -132,15 +137,8 @@ export default function HomeScreen() {
         
         <ChecklistItem
           icon="camera"
-          label="Monday Photo"
-          status={photoStatus}
-          theme={theme}
-          onPress={() => navigation.navigate("WeeklyCheckIn", { weekNumber: currentWeek })}
-        />
-        <ChecklistItem
-          icon="trending-down"
-          label="Weekly Weigh-In"
-          status={checkInStatus}
+          label="Monday Photo + Weigh-In"
+          status={weeklyCheckInStatus}
           theme={theme}
           onPress={() => navigation.navigate("WeeklyCheckIn", { weekNumber: currentWeek })}
         />
