@@ -65,17 +65,19 @@ export default function LoginScreen() {
       
       <ThemedText style={styles.greeting}>Hi, {userName}</ThemedText>
       <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-        Enter your password to continue
+        Enter your PIN to continue
       </ThemedText>
 
       <View style={styles.formContainer}>
         <TextInput
           style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: error ? "#FF3B30" : theme.border }]}
-          placeholder="Password"
+          placeholder="PIN"
           placeholderTextColor={theme.textSecondary}
           secureTextEntry
+          keyboardType="number-pad"
+          maxLength={6}
           value={password}
-          onChangeText={(t) => { setPassword(t); setError(""); }}
+          onChangeText={(t) => { setPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
           onSubmitEditing={handleUnlock}
           autoFocus
         />

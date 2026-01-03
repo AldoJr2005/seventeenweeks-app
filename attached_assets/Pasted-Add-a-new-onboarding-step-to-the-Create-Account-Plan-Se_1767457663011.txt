@@ -1,0 +1,68 @@
+Add a new onboarding step to the Create Account / Plan Setup wizard: **Macro & Nutrition Targets**.
+
+GOAL
+Based on the user’s selected calorie target (from the deficit calculator) + weight + workout plan, the app should **recommend daily macro targets** (protein/carbs/fat) with an Apple-style UI. The user can accept the recommendation or adjust it.
+
+WHERE TO ADD
+Insert this step **immediately after the Calorie Deficit Calculator step** and before the Workout Plan step.
+
+STEP TITLE
+“Macro Targets”
+
+INPUTS (already collected in setup)
+- Current weight + units
+- Goal weight
+- Age/sex/height
+- Activity level
+- Target calories/day (from deficit calculator)
+- Workout plan preference (if not collected yet, use a default assumption and update once workout step is complete OR move this macro step after workout step. Prefer: after workout step if you need workout intensity.)
+
+RECOMMENDATION LOGIC (simple + reasonable)
+1) Protein:
+- If workoutsPerWeek >= 3 (strength training): recommend ~0.8–1.0 g protein per lb of CURRENT body weight
+- If workoutsPerWeek < 3: recommend ~0.7–0.8 g/lb
+- Cap protein if calories too low so it stays realistic.
+2) Fat:
+- Recommend 20–30% of calories from fat (default 25%)
+- Ensure a minimum fat floor (example: ~0.3 g/lb or a reasonable minimum) to avoid extremely low fat.
+3) Carbs:
+- Carbs = remaining calories after protein & fat
+- Convert calories to grams (protein/carbs 4 cal/g, fat 9 cal/g)
+
+PRESETS (UI toggle)
+Provide 3 macro style presets the user can choose (single select):
+- Balanced (default)
+- Higher Protein
+- Lower Carb
+Each preset adjusts the macro split slightly while keeping total calories the same.
+Show a live preview of grams and percentages.
+
+UI REQUIREMENTS (Apple-style)
+- Clean cards showing:
+  - Target Calories
+  - Protein grams/day
+  - Carbs grams/day
+  - Fat grams/day
+- A segmented control for the preset (Balanced / Higher Protein / Lower Carb)
+- A simple “macro rings” visual or bar chart (minimal)
+- An “Adjust Manually” option:
+  - sliders or stepper inputs for protein/fat
+  - carbs auto-recalculates
+- Validation:
+  - macros must sum to target calories (within rounding tolerance)
+  - show friendly warning if values are extreme (non-judgmental)
+
+SAVE TO DB
+Persist in Challenge/Plan:
+- targetProteinGrams
+- targetCarbsGrams
+- targetFatGrams
+- macroPreset (BALANCED / HIGH_PROTEIN / LOW_CARB / CUSTOM)
+
+USE THROUGHOUT THE APP
+- On Home dashboard show “Today’s targets: Calories + P/C/F”
+- On Nutrition logging screen show targets as placeholders and a progress display (e.g., “Protein 110g / 160g” if user logs macros)
+- Include targets and adherence in weekly summaries + PDF exports
+
+DELIVERABLE
+Implement the new onboarding “Macro Targets” step with the recommendation logic, polished UI, saved plan fields, and integration into Home + Nutrition log + exports.

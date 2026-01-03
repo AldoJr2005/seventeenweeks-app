@@ -48,6 +48,10 @@ export const challenges = pgTable("challenges", {
   reminderIntensity: varchar("reminder_intensity", { length: 10 }).default("NORMAL"),
   reflectionReminderDay: varchar("reflection_reminder_day", { length: 10 }).default("Sunday"),
   reflectionReminderTime: varchar("reflection_reminder_time", { length: 10 }).default("20:30"),
+  targetProteinGrams: integer("target_protein_grams"),
+  targetCarbsGrams: integer("target_carbs_grams"),
+  targetFatGrams: integer("target_fat_grams"),
+  macroPreset: varchar("macro_preset", { length: 20 }).default("BALANCED"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -158,6 +162,7 @@ export const baselineSnapshots = pgTable("baseline_snapshots", {
   typicalSteps: integer("typical_steps"),
   workoutsPerWeek: integer("workouts_per_week"),
   typicalCalories: integer("typical_calories"),
+  typicalSleep: real("typical_sleep"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
