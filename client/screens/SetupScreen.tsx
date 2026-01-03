@@ -19,7 +19,7 @@ import { api } from "@/lib/api";
 import { getUpcomingMonday, formatDate } from "@/lib/date-utils";
 import { calculateTDEE, calculateCalorieTarget } from "@/lib/tdee-utils";
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 
 const ACTIVITY_LEVELS = [
   { id: "sedentary", label: "Sedentary", desc: "Little to no exercise", multiplier: 1.2 },
@@ -60,6 +60,12 @@ const REMINDER_INTENSITIES = [
   { id: "STRICT", label: "Strict", desc: "Firm wording, follow-up if incomplete" },
 ];
 
+const MACRO_PRESETS = [
+  { id: "BALANCED", label: "Balanced", protein: 0.30, carbs: 0.40, fat: 0.30, desc: "30% protein, 40% carbs, 30% fat" },
+  { id: "HIGH_PROTEIN", label: "Higher Protein", protein: 0.40, carbs: 0.30, fat: 0.30, desc: "40% protein, 30% carbs, 30% fat" },
+  { id: "LOW_CARB", label: "Lower Carb", protein: 0.35, carbs: 0.25, fat: 0.40, desc: "35% protein, 25% carbs, 40% fat" },
+];
+
 export default function SetupScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
@@ -98,6 +104,7 @@ export default function SetupScreen() {
   const [lunchTime, setLunchTime] = useState("12:00");
   const [reminderIntensity, setReminderIntensity] = useState("NORMAL");
   const [baselinePhoto, setBaselinePhoto] = useState<string | null>(null);
+  const [macroPreset, setMacroPreset] = useState("BALANCED");
 
   const startDate = getUpcomingMonday();
   const startDateFormatted = formatDate(startDate);
@@ -157,15 +164,27 @@ export default function SetupScreen() {
 
   const finalStepGoal = useCustomSteps ? (parseInt(customStepGoal) || 8000) : stepGoal;
 
+  const macros = useMemo(() => {
+    if (!targetCalories || targetCalories <= 0) {
+      return { protein: 0, carbs: 0, fat: 0 };
+    }
+    const preset = MACRO_PRESETS.find(p => p.id === macroPreset) || MACRO_PRESETS[0];
+    const protein = Math.round((targetCalories * preset.protein) / 4);
+    const carbs = Math.round((targetCalories * preset.carbs) / 4);
+    const fat = Math.round((targetCalories * preset.fat) / 9);
+    return { protein, carbs, fat };
+  }, [targetCalories, macroPreset]);
+
   const isStep1Valid = name.trim().length > 0 && age.trim().length > 0 && sex !== "" &&
     !!(heightUnit === "ft" ? (heightFeet || heightInches) : heightCm) &&
     currentWeight.trim().length > 0 && password.length >= 4 && password === confirmPassword;
   const isStep2Valid = goalWeight.trim().length > 0;
   const isStep3Valid = activityLevel !== "" && deficitLevel !== "" && targetCalories > 0;
-  const isStep4Valid = workoutsPerWeek >= 0 && preferredSplit !== "";
-  const isStep5Valid = finalStepGoal >= 1000;
-  const isStep6Valid = fastingType !== "";
-  const isStep7Valid = reminderIntensity !== "";
+  const isStep4Valid = macroPreset !== "" && targetCalories > 0;
+  const isStep5Valid = workoutsPerWeek >= 0 && preferredSplit !== "";
+  const isStep6Valid = finalStepGoal >= 1000;
+  const isStep7Valid = fastingType !== "";
+  const isStep8Valid = reminderIntensity !== "";
 
   const canContinue = (): boolean => {
     switch (step) {
@@ -176,8 +195,9 @@ export default function SetupScreen() {
       case 5: return isStep5Valid;
       case 6: return isStep6Valid;
       case 7: return isStep7Valid;
-      case 8: return true;
+      case 8: return isStep8Valid;
       case 9: return true;
+      case 10: return true;
       default: return false;
     }
   };
@@ -262,6 +282,10 @@ export default function SetupScreen() {
         eatingEndTime: eatingWindow?.end || null,
         reminderIntensity,
         smartReminders: true,
+        targetProteinGrams: macros.protein,
+        targetCarbsGrams: macros.carbs,
+        targetFatGrams: macros.fat,
+        macroPreset,
       });
 
       try {
@@ -530,6 +554,61 @@ export default function SetupScreen() {
       case 4:
         return (
           <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Macro Targets</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>Set your daily protein, carbs, and fat goals</ThemedText>
+
+            <Card style={styles.tdeeCard}>
+              <View style={styles.tdeeRow}>
+                <ThemedText style={[styles.tdeeLabel, { color: theme.textSecondary }]}>Daily Calories</ThemedText>
+                <ThemedText style={[styles.tdeeValue, { color: theme.primary }]}>{targetCalories} cal</ThemedText>
+              </View>
+            </Card>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Macro Style</ThemedText>
+              {MACRO_PRESETS.map(preset => (
+                <Pressable
+                  key={preset.id}
+                  style={[styles.optionCard, { backgroundColor: theme.backgroundDefault, borderColor: macroPreset === preset.id ? theme.primary : theme.border }]}
+                  onPress={() => setMacroPreset(preset.id)}
+                >
+                  <View style={styles.optionHeader}>
+                    <ThemedText style={styles.optionLabel}>{preset.label}</ThemedText>
+                    {macroPreset === preset.id ? <Feather name="check-circle" size={20} color={theme.primary} /> : null}
+                  </View>
+                  <ThemedText style={[styles.optionDesc, { color: theme.textSecondary }]}>{preset.desc}</ThemedText>
+                </Pressable>
+              ))}
+            </View>
+
+            {macros.protein > 0 ? (
+              <Card style={styles.macroCard}>
+                <ThemedText style={[styles.macroTitle, { color: theme.text }]}>Your Daily Targets</ThemedText>
+                <View style={styles.macroGrid}>
+                  <View style={styles.macroItem}>
+                    <ThemedText style={[styles.macroValue, { color: theme.primary }]}>{macros.protein}g</ThemedText>
+                    <ThemedText style={[styles.macroLabel, { color: theme.textSecondary }]}>Protein</ThemedText>
+                  </View>
+                  <View style={styles.macroItem}>
+                    <ThemedText style={[styles.macroValue, { color: theme.success }]}>{macros.carbs}g</ThemedText>
+                    <ThemedText style={[styles.macroLabel, { color: theme.textSecondary }]}>Carbs</ThemedText>
+                  </View>
+                  <View style={styles.macroItem}>
+                    <ThemedText style={[styles.macroValue, { color: theme.warning }]}>{macros.fat}g</ThemedText>
+                    <ThemedText style={[styles.macroLabel, { color: theme.textSecondary }]}>Fat</ThemedText>
+                  </View>
+                </View>
+                <ThemedText style={[styles.macroCalc, { color: theme.textSecondary }]}>
+                  = {macros.protein * 4 + macros.carbs * 4 + macros.fat * 9} cal
+                </ThemedText>
+              </Card>
+            ) : null}
+          </View>
+        );
+
+      case 5:
+        return (
+          <View style={styles.stepContent}>
             <ThemedText style={styles.stepTitle}>Workout Plan</ThemedText>
             <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>How do you like to train?</ThemedText>
 
@@ -600,7 +679,7 @@ export default function SetupScreen() {
           </View>
         );
 
-      case 5:
+      case 6:
         return (
           <View style={styles.stepContent}>
             <ThemedText style={styles.stepTitle}>Daily Step Goal</ThemedText>
@@ -646,7 +725,7 @@ export default function SetupScreen() {
           </View>
         );
 
-      case 6:
+      case 7:
         return (
           <View style={styles.stepContent}>
             <ThemedText style={styles.stepTitle}>Fasting Setup</ThemedText>
@@ -697,7 +776,7 @@ export default function SetupScreen() {
           </View>
         );
 
-      case 7:
+      case 8:
         return (
           <View style={styles.stepContent}>
             <ThemedText style={styles.stepTitle}>Reminder Style</ThemedText>
@@ -719,7 +798,7 @@ export default function SetupScreen() {
           </View>
         );
 
-      case 8:
+      case 9:
         return (
           <View style={styles.stepContent}>
             <ThemedText style={styles.stepTitle}>Baseline Photo</ThemedText>
@@ -742,7 +821,7 @@ export default function SetupScreen() {
           </View>
         );
 
-      case 9:
+      case 10:
         return (
           <View style={styles.stepContent}>
             <View style={styles.summaryHeader}>
@@ -765,6 +844,10 @@ export default function SetupScreen() {
               <View style={styles.summaryRow}>
                 <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Daily Calories</ThemedText>
                 <ThemedText style={[styles.summaryValue, { color: theme.primary }]}>{targetCalories} cal</ThemedText>
+              </View>
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Macros</ThemedText>
+                <ThemedText style={styles.summaryValue}>P:{macros.protein}g C:{macros.carbs}g F:{macros.fat}g</ThemedText>
               </View>
               <View style={styles.summaryRow}>
                 <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Weekly Pace</ThemedText>
@@ -1076,5 +1159,34 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     textAlign: "center",
     ...Typography.footnote,
+  },
+  macroCard: {
+    padding: Spacing.lg,
+    marginTop: Spacing.md,
+  },
+  macroTitle: {
+    ...Typography.headline,
+    textAlign: "center",
+    marginBottom: Spacing.md,
+  },
+  macroGrid: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  macroItem: {
+    alignItems: "center",
+  },
+  macroValue: {
+    ...Typography.title2,
+    fontWeight: "700",
+  },
+  macroLabel: {
+    ...Typography.footnote,
+    marginTop: Spacing.xs,
+  },
+  macroCalc: {
+    ...Typography.footnote,
+    textAlign: "center",
+    marginTop: Spacing.md,
   },
 });

@@ -312,6 +312,19 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
             </View>
           </View>
         </View>
+        {challenge.targetProteinGrams ? (
+          <View style={styles.planRow}>
+            <View style={[styles.planItem, { flex: 1 }]}>
+              <Feather name="pie-chart" size={20} color={theme.primary} />
+              <View>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Daily Macros</ThemedText>
+                <ThemedText style={styles.planValue}>
+                  P:{challenge.targetProteinGrams}g C:{challenge.targetCarbsGrams}g F:{challenge.targetFatGrams}g
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        ) : null}
       </Card>
 
       <View style={styles.actions}>
