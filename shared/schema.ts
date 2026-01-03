@@ -26,6 +26,17 @@ export const challenges = pgTable("challenges", {
     habits: "21:00"
   }),
   smartReminders: boolean("smart_reminders").default(true),
+  activityLevel: varchar("activity_level", { length: 20 }),
+  targetCalories: integer("target_calories"),
+  targetWeeklyLoss: real("target_weekly_loss"),
+  deficitLevel: varchar("deficit_level", { length: 20 }),
+  workoutsPerWeek: integer("workouts_per_week").default(4),
+  trainingStyle: varchar("training_style", { length: 30 }),
+  preferredSplit: varchar("preferred_split", { length: 30 }),
+  runningDaysPerWeek: integer("running_days_per_week").default(0),
+  fastingType: varchar("fasting_type", { length: 10 }),
+  eatingStartTime: varchar("eating_start_time", { length: 10 }),
+  eatingEndTime: varchar("eating_end_time", { length: 10 }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -116,9 +127,35 @@ export const userProfiles = pgTable("user_profiles", {
   heightValue: real("height_value").notNull(),
   heightUnit: varchar("height_unit", { length: 10 }).notNull().default("ft"),
   weightUnit: varchar("weight_unit", { length: 10 }).notNull().default("lbs"),
+  age: integer("age"),
+  sex: varchar("sex", { length: 10 }),
   passwordHash: text("password_hash").notNull(),
   requirePasswordOnOpen: boolean("require_password_on_open").default(true),
   autoLockMinutes: integer("auto_lock_minutes").default(5),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Baseline snapshot (Week 0)
+export const baselineSnapshots = pgTable("baseline_snapshots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  challengeId: varchar("challenge_id").references(() => challenges.id),
+  baselineWeight: real("baseline_weight").notNull(),
+  baselinePhotoUri: text("baseline_photo_uri"),
+  typicalSteps: integer("typical_steps"),
+  workoutsPerWeek: integer("workouts_per_week"),
+  typicalCalories: integer("typical_calories"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Weekly reflection
+export const weeklyReflections = pgTable("weekly_reflections", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  challengeId: varchar("challenge_id").references(() => challenges.id),
+  weekNumber: integer("week_number").notNull(),
+  wentWell: text("went_well"),
+  wasHard: text("was_hard"),
+  improveNextWeek: text("improve_next_week"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -135,13 +172,29 @@ export const appSettings = pgTable("app_settings", {
 });
 
 // Relations
-export const challengesRelations = relations(challenges, ({ many }) => ({
+export const challengesRelations = relations(challenges, ({ many, one }) => ({
   dayLogs: many(dayLogs),
   workoutLogs: many(workoutLogs),
   weeklyPhotos: many(weeklyPhotos),
   weeklyCheckIns: many(weeklyCheckIns),
   habitLogs: many(habitLogs),
   reminderLogs: many(reminderLogs),
+  baselineSnapshot: one(baselineSnapshots),
+  weeklyReflections: many(weeklyReflections),
+}));
+
+export const baselineSnapshotsRelations = relations(baselineSnapshots, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [baselineSnapshots.challengeId],
+    references: [challenges.id],
+  }),
+}));
+
+export const weeklyReflectionsRelations = relations(weeklyReflections, ({ one }) => ({
+  challenge: one(challenges, {
+    fields: [weeklyReflections.challengeId],
+    references: [challenges.id],
+  }),
 }));
 
 export const dayLogsRelations = relations(dayLogs, ({ one }) => ({
@@ -196,6 +249,8 @@ export const insertHabitLogSchema = createInsertSchema(habitLogs).omit({ id: tru
 export const insertReminderLogSchema = createInsertSchema(reminderLogs).omit({ id: true, createdAt: true });
 export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAppSettingsSchema = createInsertSchema(appSettings).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertBaselineSnapshotSchema = createInsertSchema(baselineSnapshots).omit({ id: true, createdAt: true });
+export const insertWeeklyReflectionSchema = createInsertSchema(weeklyReflections).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
 export type Challenge = typeof challenges.$inferSelect;
@@ -216,6 +271,10 @@ export type UserProfile = typeof userProfiles.$inferSelect;
 export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type InsertAppSettings = z.infer<typeof insertAppSettingsSchema>;
+export type BaselineSnapshot = typeof baselineSnapshots.$inferSelect;
+export type InsertBaselineSnapshot = z.infer<typeof insertBaselineSnapshotSchema>;
+export type WeeklyReflection = typeof weeklyReflections.$inferSelect;
+export type InsertWeeklyReflection = z.infer<typeof insertWeeklyReflectionSchema>;
 
 // Workout types enum
 export const WORKOUT_TYPES = ["Push", "Pull", "Legs", "Plyo-Abs", "Rest"] as const;

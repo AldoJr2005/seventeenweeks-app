@@ -12,13 +12,18 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useChallenge } from "@/hooks/useChallenge";
+import { getChallengeStatus } from "@/lib/challenge-utils";
 import SetupScreen from "@/screens/SetupScreen";
 import LoginScreen from "@/screens/LoginScreen";
+import PreChallengeScreen from "@/screens/PreChallengeScreen";
+import type { Challenge } from "@shared/schema";
 
 function AppContent() {
   const { isLoading, needsSetup, isUnlocked, isLoggedOut, profile } = useAuth();
+  const { data: challenge, isLoading: challengeLoading } = useChallenge();
 
-  if (isLoading) {
+  if (isLoading || challengeLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
@@ -32,6 +37,13 @@ function AppContent() {
 
   if (isLoggedOut || (profile?.requirePasswordOnOpen && !isUnlocked)) {
     return <LoginScreen />;
+  }
+
+  if (challenge) {
+    const status = getChallengeStatus((challenge as Challenge).startDate);
+    if (status === "PRE_CHALLENGE") {
+      return <PreChallengeScreen challenge={challenge as Challenge} />;
+    }
   }
 
   return <RootStackNavigator />;

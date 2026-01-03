@@ -13,9 +13,16 @@ export function parseDate(dateStr: string): Date {
 export function getUpcomingMonday(): Date {
   const today = new Date();
   const dayOfWeek = today.getDay();
+  
+  if (dayOfWeek === 1) {
+    today.setHours(0, 0, 0, 0);
+    return today;
+  }
+  
   const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
   const nextMonday = new Date(today);
   nextMonday.setDate(today.getDate() + daysUntilMonday);
+  nextMonday.setHours(0, 0, 0, 0);
   return nextMonday;
 }
 
