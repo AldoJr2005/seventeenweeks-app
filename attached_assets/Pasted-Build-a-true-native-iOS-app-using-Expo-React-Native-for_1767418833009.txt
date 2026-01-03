@@ -1,0 +1,170 @@
+Build a **true native iOS app** using **Expo (React Native)** for a **17-Week Weight Loss Challenge**.  
+This app is **iPhone-first**, single-user for now, but must be architected cleanly for future multi-user support.
+
+PRIMARY GOAL
+A private, Apple-style, minimalist iOS app that tracks:
+• Weekly progress photos (every Monday)
+• Daily calorie/macronutrient logging (manual totals from MyFitnessPal)
+• Daily workout logging (Push / Pull / Legs / Plyo-Abs / Rest)
+• Weekly weigh-ins + body measurements
+• Daily habits (water, steps, sleep)
+• Streaks, compliance score, and progress insights
+• Smart reminders and notifications
+• Photo comparisons and progress charts
+• Final export/share summary at week 17
+
+TECH STACK (USE EXACTLY THIS)
+• Expo (React Native) with TypeScript
+• Expo Router
+• Expo SQLite (local storage for MVP)
+• Expo Notifications (for reminders)
+• Expo Image Picker / Camera (weekly photos)
+• Expo SecureStore (passcode / sensitive data)
+• React Native Reanimated (subtle animations)
+• Chart library (lightweight, clean visuals)
+• iOS-only focus (no Android optimizations required)
+
+DESIGN REQUIREMENTS (VERY IMPORTANT)
+• Apple-style UI: clean, minimalist, modern
+• Rounded cards, soft shadows, whitespace
+• iOS-native feel (Apple Fitness / Health style)
+• Bottom tab navigation
+• Light & Dark Mode
+• Large touch targets
+• Fast logging (1–2 taps where possible)
+• No clutter or gamified noise
+
+APP NAVIGATION (BOTTOM TABS)
+1) Home
+2) Log
+3) Progress
+4) Settings
+
+FEATURES
+
+1) ONBOARDING / CHALLENGE SETUP
+• Start date (default: upcoming Monday)
+• Start weight
+• Goal weight (optional)
+• Units (lbs/kg)
+• Reminder times (nutrition, workout, photo, weigh-in, habits)
+• Create a 17-week challenge (weeks start Monday)
+
+2) HOME DASHBOARD
+Clean card layout showing:
+• Today’s status:
+  – Nutrition: Done / Pending / Skipped
+  – Workout: Done / Pending
+  – Habits: water / steps / sleep
+• This week:
+  – Monday photo: Done / Pending
+  – Weekly weigh-in: Done / Pending
+• Streaks + weekly compliance score
+• Quick action buttons:
+  – Log Nutrition
+  – Log Workout
+  – Upload Photo
+  – Weekly Check-in
+
+3) WEEKLY PHOTO CHECK-IN
+• One photo per week (Monday required)
+• Camera or photo library upload
+• Late uploads allowed but labeled
+• Photo timeline grid (Week 1–17)
+• Photo comparison:
+  – Side-by-side
+  – Slider comparison if feasible
+• Store images securely and locally for MVP
+
+4) DAILY NUTRITION LOG (MANUAL)
+• Calories
+• Protein / Carbs / Fat
+• Optional notes
+• “Mark as skipped” option
+• Weekly averages + simple trend charts
+• Prefill yesterday’s values as suggestion
+
+5) WORKOUT LOG
+• Workout type:
+  – Push
+  – Pull
+  – Legs
+  – Plyo / Abs
+  – Rest
+• Optional:
+  – Duration
+  – Notes
+  – Exercises (text list)
+• Workout templates for fast 1-tap logging
+• Weekly workout summary
+
+6) WEEKLY WEIGH-IN + MEASUREMENTS
+• Weekly weight entry
+• Measurements:
+  – Waist
+  – Hips
+  – Chest
+• Optional notes
+• Progress charts
+• Total change from start
+• Goal pace indicator (simple, non-judgmental)
+
+7) HABIT TRACKING
+Daily toggles:
+• Water
+• Steps (goal met yes/no or number)
+• Sleep (goal met yes/no or hours)
+Weekly habit completion summary
+
+8) STREAKS & COMPLIANCE SCORE
+• Nutrition streak
+• Workout streak
+• Habit streak
+• Weekly compliance score (0–100):
+  – Nutrition 40%
+  – Workouts 40%
+  – Check-ins 20%
+• Positive insights only (no shaming)
+
+9) SMART NOTIFICATIONS (IMPORTANT)
+Use Expo Notifications.
+• Nutrition reminder: 8:30 PM if not logged
+• Workout reminder: 6:00 PM if not logged
+• Photo reminder: Monday 10:00 AM
+• Weigh-in reminder: Monday 10:15 AM
+• Habits reminder: 9:00 PM if incomplete
+Rules:
+• Do not notify if already completed
+• Respect skipped entries
+• All reminders configurable in Settings
+
+10) EXPORT / SHARE
+• Generate end-of-challenge summary:
+  – Weight & measurement change
+  – Compliance score
+  – Progress overview
+• Export as PDF or shareable image
+
+11) SECURITY & PRIVACY
+• App lock using passcode (Face ID-style if supported)
+• All data private and local
+• Clean error handling and loading states
+
+DATA MODEL (LOCAL)
+• User
+• Challenge
+• DayLog
+• WorkoutLog
+• WeeklyPhoto
+• WeeklyCheckIn
+• HabitLog
+• ReminderLog
+
+DELIVERABLES
+• Fully working Expo iOS app
+• Clean, organized codebase
+• Clear instructions to run in Expo Go
+• Seed/demo data toggle for testing
+• No placeholder UI — everything functional
+
+BUILD THIS AS A POLISHED MVP THAT FEELS LIKE A REAL APP, NOT A DEMO.

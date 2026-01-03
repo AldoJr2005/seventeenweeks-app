@@ -1,0 +1,243 @@
+Build a mobile-first iPhone-focused web app (PWA) for a **17-week Weight Loss Challenge** with an **Apple-style UI** (modern, minimalist, lots of whitespace, rounded cards, smooth animations, simple navigation). It will be used by **one user (me)** for now, but architect the code/data model to support multiple users later.
+
+TIMEZONE: America/Chicago. Weeks start on Monday.
+
+TECH STACK (use these unless impossible):
+- Next.js (App Router) + TypeScript
+- Tailwind CSS for styling (Apple-like: clean, subtle borders/shadows, rounded cards)
+- Prisma ORM + SQLite (local) or Postgres (if easier in Replit)
+- Authentication: email/password (single user now). If auth is too hard, implement a local profile but keep the schema ready for multi-user.
+- Image storage: store uploaded images in a safe way (prefer object storage if available; otherwise local storage with protected routes). Do NOT expose raw file paths.
+- PWA: installable on iPhone (Add to Home Screen), offline-friendly for browsing history.
+
+IMPORTANT LIMITATION NOTE:
+iPhone PWA push notifications can be limited depending on environment. Try to implement web push notifications if feasible. If not feasible, implement:
+1) Browser notification permission + best-effort notifications where possible
+2) An in-app “Reminder Center” that shows pending items and “Smart reminders” logic
+3) Clear instructions UI for iPhone Add-to-Home-Screen and enabling notifications
+
+CORE APP CONCEPT:
+A 17-week challenge where I track:
+- Weekly progress photo (every Monday)
+- Daily nutrition/macros (manual entry from MyFitnessPal totals)
+- Daily workout logging (Push/Pull/Legs/Plyo-Abs/Rest)
+- Weekly weigh-in and optional body measurements
+- Habit checklist (water, steps, sleep) as optional toggles
+- Streaks/compliance score + insights
+- Progress charts + photo compare
+- Export/share summary at the end
+
+APP IA / NAVIGATION (Bottom Tab Bar):
+1) Home
+2) Log
+3) Progress
+4) Settings
+
+DESIGN REQUIREMENTS (Apple-style):
+- Minimalist UI, big touch targets, subtle icons, light/dark mode toggle
+- Bottom tab bar with clear icons/labels
+- Cards for key actions, “Done/Pending” badges, smooth transitions
+- Avoid clutter: hide advanced options behind “More” or collapsible sections
+- Accessibility: good contrast, readable font sizes, keyboard-friendly inputs
+
+FEATURES (FULL BUILD):
+
+A) Onboarding / Challenge Setup
+- First run flow:
+  - Start date (default: upcoming Monday)
+  - Start weight
+  - Goal weight (optional)
+  - Preferred reminder times (nutrition/workout/photo/weigh-in/habits)
+  - Units toggle: lbs/kg (default lbs)
+- Create a Challenge automatically: 17 weeks, weeks start Monday.
+- Generate Week objects Week 1..Week 17, each with Monday date boundaries.
+
+B) Home Dashboard (daily command center)
+Show clean cards with:
+- Today’s checklist:
+  - Nutrition log: Done/Pending/Skipped
+  - Workout log: Done/Pending
+  - Habits: water / steps / sleep (optional toggles)
+- This week:
+  - Monday progress photo: Done/Pending
+  - Weekly weigh-in: Done/Pending
+  - Weekly measurements: Optional Done/Pending
+- Streaks & compliance score:
+  - “This week: Nutrition 5/7, Workouts 3/4, Habits 15/21”
+  - Overall challenge completion %
+- Quick actions:
+  - “Log Nutrition”, “Log Workout”, “Upload Monday Photo”, “Weekly Check-in”
+- Smart behavior:
+  - If something is already logged, don’t nag or show it as pending.
+
+C) Weekly Photo Check-in (every Monday)
+- Each week requires 1 photo on Monday (allow upload from iPhone camera roll).
+- If Monday passes, allow late upload but label it “Late”.
+- Photo timeline:
+  - Grid by week with thumbnails
+  - Tap to view full
+- Photo compare:
+  - Select any 2 weeks and view side-by-side
+  - Add a swipe/slider compare view if feasible
+- Storage:
+  - Securely store images; access controlled to the user.
+  - Optimize images (compression/resizing) for fast loading.
+
+D) Daily Nutrition Log (manual totals from MyFitnessPal)
+For each date:
+- Fields:
+  - total calories (required unless skipped)
+  - protein (g), carbs (g), fat (g)
+  - optional notes
+- “Mark as skipped” option (with optional reason) so it doesn’t feel punishing.
+- Weekly summaries:
+  - average calories/macros
+  - “days logged vs skipped”
+- Trend charts:
+  - simple line chart for calories (weekly avg) and macros (weekly avg)
+- UX:
+  - One-screen logging, big inputs, quick “Save” button, auto-focus.
+  - Prefill yesterday’s macros as suggestion (optional).
+
+E) Workout Logging (daily / per session)
+For each date:
+- Workout type enum:
+  - Push, Pull, Legs, Plyo/Abs, Rest
+- Optional:
+  - duration minutes
+  - notes
+  - exercises (simple text list OR small structured list if easy)
+- Templates:
+  - Predefined templates for Push/Pull/Legs/Plyo-Abs
+  - “1-tap log”: choose template → optionally add notes → save
+- Weekly summary:
+  - workouts count, rest days, streaks
+  - calendar heatmap (optional) or simple weekly bars
+
+F) Weekly Weigh-in + Body Measurements
+- Weekly weigh-in:
+  - default prompt on Mondays (or user-selected day)
+  - allow entering weight, note
+  - allow skipping (optional)
+- Measurements (optional but included):
+  - waist, hips, chest (and optionally body fat % if user wants)
+  - store as weekly entries (same week as weigh-in)
+- Progress:
+  - weight trend line over 17 weeks
+  - measurement trend lines
+  - show change from start: “-X lbs”, “-Y inches waist”
+- Goal pace tracker:
+  - compute expected weekly loss based on start vs goal weight and weeks remaining
+  - show pace indicator (simple, non-judgmental)
+
+G) Habit Checklist (optional toggles, minimal UI)
+Daily toggles:
+- Water (met? yes/no)
+- Steps (number OR met goal yes/no; include optional step goal in settings)
+- Sleep (hours OR met goal yes/no; include optional sleep goal)
+Keep it simple: toggles first, numbers optional.
+Weekly habit summary:
+- completion counts, streaks
+
+H) Calendar & History
+- Calendar view to browse days (month view)
+- Day detail screen shows:
+  - nutrition
+  - workout
+  - habits
+  - notes
+- Week view shows:
+  - photo status
+  - weigh-in status
+  - summaries (avg calories/macros, workouts, habits)
+- Make navigation fast and intuitive.
+
+I) Streaks, Compliance Score, and Insights (lightweight, motivational)
+- Streaks:
+  - nutrition streak
+  - workout streak
+  - habit streak
+- Compliance score:
+  - weekly score out of 100 based on completion:
+    - Nutrition 40%
+    - Workouts 40%
+    - Photo/Weigh-in/Measurements 20%
+  - configurable weights in settings
+- Insights:
+  - simple statements like:
+    - “Weeks with 3+ workouts had better weight trend”
+    - “You logged nutrition 6/7 days this week”
+  - Keep it positive and non-shaming.
+
+J) Reminders / Notifications (Smart)
+Set default reminder times (editable in Settings):
+- Nutrition reminder: 8:30 PM local time if not logged
+- Workout reminder: 6:00 PM local time if not logged
+- Photo reminder: Monday 10:00 AM if not uploaded
+- Weigh-in reminder: Monday 10:15 AM if not logged
+- Habits reminder: 9:00 PM if any habit not done
+Smart rules:
+- Do not remind if completed.
+- If “skipped” marked, don’t remind again for that item.
+Implementation:
+- Attempt web push notifications if possible.
+- If not possible, implement:
+  - In-app Reminder Center with “Pending today” items
+  - A “Daily checklist” banner that appears after certain times
+  - Clear instructions for enabling notifications + Add to Home Screen
+- Log all reminders fired in the database for debugging.
+
+K) Export / Share Summary
+- At any time, generate a shareable summary:
+  - date range, weight change, measurement change, compliance score
+  - weekly thumbnails grid of photos (optional)
+  - charts snapshots (optional)
+- Export options:
+  - PDF export preferred
+  - Or “Share as image” (single page summary) if PDF is hard
+- At Week 17, show a “Challenge Complete” screen with full recap.
+
+L) Security / Privacy
+- Add optional Face ID / passcode lock equivalent:
+  - If true native Face ID isn’t possible, implement an app lock screen with passcode/biometric via WebAuthn if feasible; otherwise passcode.
+- Ensure user data is private.
+- Secure image access (signed URLs / protected route).
+- Basic rate limiting and input validation.
+
+DATA MODEL (Prisma) – design clean for future multi-user
+- User: id, email, passwordHash, name, createdAt
+- Challenge: id, userId, startDate, weeks(17), unit, goals (goalWeight, stepGoal, sleepGoal), reminderTimes JSON
+- DayLog: id, userId, date, calories, protein, carbs, fat, notes, skippedFlag, skippedReason
+- WorkoutLog: id, userId, date, type(enum), durationMin, notes, exercisesText
+- WeeklyPhoto: id, userId, challengeId, weekNumber, mondayDate, imageKey/url, uploadedAt, isLate
+- WeeklyCheckIn: id, userId, challengeId, weekNumber, weighInWeight, waist, hips, chest, bodyFat(optional), notes
+- HabitLog: id, userId, date, waterDone(bool), steps(optional int), stepsDone(bool optional), sleepHours(optional float), sleepDone(bool optional)
+- ReminderLog: id, userId, dateTime, type(enum), targetDate, fired(bool)
+
+PAGES / ROUTES
+- / (Home dashboard)
+- /log (today logging + choose date)
+- /log/nutrition
+- /log/workout
+- /log/habits
+- /weekly (weekly check-in + photo upload)
+- /progress (charts + summaries + photo timeline)
+- /progress/photos (timeline + compare)
+- /calendar (month view + day detail)
+- /settings (reminders, goals, unit, templates, export, lock)
+
+QUALITY REQUIREMENTS
+- Handle timezone correctly (America/Chicago)
+- Provide loading/empty/error states everywhere
+- Mobile-first: perfect on iPhone screen sizes
+- Use good components (cards, buttons, toggles, bottom tab bar)
+- Add light/dark mode
+- Add seed/demo data toggle for development
+
+DELIVERABLES
+- Working app in Replit with instructions to run
+- README explaining:
+  - setup, migrations, environment vars
+  - image storage approach
+  - notification limitations on iPhone PWAs and what was implemented
+- Ensure the app is stable and polished: no broken routes, no placeholder UI.
