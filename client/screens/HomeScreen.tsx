@@ -216,10 +216,7 @@ export default function HomeScreen() {
         />
       </Card>
 
-      <Pressable 
-        onPress={() => navigation.getParent()?.navigate("LogTab", { screen: "NutritionLog", params: { date: today } })}
-        style={styles.nutritionDashboard}
-      >
+      <View style={styles.nutritionDashboard}>
         <ScrollView
           horizontal
           pagingEnabled
@@ -309,7 +306,10 @@ export default function HomeScreen() {
           </Card>
         </ScrollView>
 
-        <View style={styles.paginationDots}>
+        <Pressable 
+          style={styles.paginationDots}
+          onPress={() => navigation.getParent()?.navigate("LogTab", { screen: "NutritionLog", params: { date: today } })}
+        >
           {[0, 1, 2, 3].map((i) => (
             <View
               key={i}
@@ -319,8 +319,8 @@ export default function HomeScreen() {
               ]}
             />
           ))}
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
 
       <Card style={styles.card}>
         <ThemedText style={styles.cardTitle}>This Week</ThemedText>
