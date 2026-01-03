@@ -10,14 +10,19 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.weightlosschallenge.app"
+      "bundleIdentifier": "com.seventeenweeks.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to take progress photos and scan food barcodes.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photos to select progress photos.",
+        "NSPhotoLibraryAddUsageDescription": "This app saves progress photos to your library."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "package": "com.weightlosschallenge.app"
+      "package": "com.seventeenweeks.app"
     },
     "web": {
       "output": "single",
@@ -36,7 +41,21 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow 17 WEEKS to use your camera for progress photos and barcode scanning."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow 17 WEEKS to access your photos for progress tracking.",
+          "cameraPermission": "Allow 17 WEEKS to use your camera for progress photos."
+        }
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "reactCompiler": true
