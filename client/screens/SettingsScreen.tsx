@@ -263,6 +263,24 @@ export default function SettingsScreen() {
 
       <ThemedText style={styles.sectionHeader}>Goals</ThemedText>
       <Card style={styles.section}>
+        <Pressable
+          style={styles.settingsRow}
+          onPress={() => navigation.navigate("TDEECalculator")}
+        >
+          <View style={styles.settingsRowLeft}>
+            <Feather name="activity" size={20} color={theme.textSecondary} />
+            <View>
+              <ThemedText style={styles.settingsLabel}>Calorie Calculator</ThemedText>
+              <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
+                {(challenge as Challenge | undefined)?.targetCalories 
+                  ? `${(challenge as Challenge).targetCalories} cal/day`
+                  : "Calculate your daily calories"}
+              </ThemedText>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <SettingsRow
           icon="navigation"
           label="Daily Step Goal"
