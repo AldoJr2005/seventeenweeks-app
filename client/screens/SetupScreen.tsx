@@ -912,6 +912,7 @@ export default function SetupScreen() {
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl }]}
+      showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
         <ThemedText style={[styles.stepIndicator, { color: theme.textSecondary }]}>Step {step} of {TOTAL_STEPS}</ThemedText>
