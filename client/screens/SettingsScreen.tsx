@@ -645,7 +645,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   signature: {
-    width: 160,
-    height: 50,
+    width: 200,
+    height: 65,
   },
 });
