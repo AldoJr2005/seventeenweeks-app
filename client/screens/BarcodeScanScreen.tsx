@@ -257,7 +257,7 @@ export default function BarcodeScanScreen() {
       ) : null}
 
       {loading ? (
-        <View style={[styles.resultContainer, { paddingBottom: insets.bottom + Spacing.lg }]}>
+        <View style={[styles.resultContainer, { paddingBottom: insets.bottom + 100 }]}>
           <Card style={styles.resultCard}>
             <ActivityIndicator size="large" color={theme.primary} />
             <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
@@ -268,7 +268,7 @@ export default function BarcodeScanScreen() {
       ) : null}
 
       {productData ? (
-        <View style={[styles.resultContainer, { paddingBottom: insets.bottom + Spacing.lg }]}>
+        <View style={[styles.resultContainer, { paddingBottom: insets.bottom + 100 }]}>
           <Card style={styles.resultCard}>
             <ThemedText style={styles.productName}>{productData.name}</ThemedText>
             {productData.brand ? (
@@ -336,7 +336,7 @@ export default function BarcodeScanScreen() {
       ) : null}
 
       {error ? (
-        <View style={[styles.resultContainer, { paddingBottom: insets.bottom + Spacing.lg }]}>
+        <View style={[styles.resultContainer, { paddingBottom: insets.bottom + 100 }]}>
           <Card style={styles.resultCard}>
             <Feather name="alert-circle" size={32} color={theme.warning} />
             <ThemedText style={[styles.errorText, { color: theme.warning }]}>

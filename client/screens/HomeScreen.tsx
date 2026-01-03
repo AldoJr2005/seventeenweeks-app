@@ -130,14 +130,24 @@ export default function HomeScreen() {
   const targetFat = challenge.targetFatGrams || 65;
 
   const nutritionTotals = useMemo(() => {
-    if (!foodEntries) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    if (!foodEntries) return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, cholesterol: 0 };
     return (foodEntries as FoodEntry[]).reduce((acc, entry) => ({
       calories: acc.calories + Math.round(entry.caloriesPerServing * entry.servingsCount),
       protein: acc.protein + Math.round((entry.proteinPerServing || 0) * entry.servingsCount),
       carbs: acc.carbs + Math.round((entry.carbsPerServing || 0) * entry.servingsCount),
       fat: acc.fat + Math.round((entry.fatPerServing || 0) * entry.servingsCount),
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      fiber: acc.fiber + Math.round((entry.fiberPerServing || 0) * entry.servingsCount),
+      sugar: acc.sugar + Math.round((entry.sugarPerServing || 0) * entry.servingsCount),
+      sodium: acc.sodium + Math.round((entry.sodiumPerServing || 0) * entry.servingsCount),
+      cholesterol: acc.cholesterol + Math.round((entry.cholesterolPerServing || 0) * entry.servingsCount),
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, cholesterol: 0 });
   }, [foodEntries]);
+
+  const targetFiber = 25;
+  const targetSugar = 50;
+  const targetSodium = 2300;
+  const targetCholesterol = 300;
+  const netCarbs = Math.max(0, nutritionTotals.carbs - nutritionTotals.fiber);
 
   const caloriesRemaining = targetCalories - nutritionTotals.calories;
   const caloriesProgress = targetCalories > 0 ? nutritionTotals.calories / targetCalories : 0;
@@ -279,10 +289,28 @@ export default function HomeScreen() {
               </View>
             </View>
           </Card>
+
+          <Card style={[styles.nutritionCard, { width: NUTRITION_CARD_WIDTH }]}>
+            <ThemedText style={styles.cardTitleSmall}>Heart Healthy</ThemedText>
+            <View style={styles.progressBarsContainer}>
+              <MiniProgressBar label="Fat" value={nutritionTotals.fat} target={targetFat} color="#FF3B30" unit="g" theme={theme} />
+              <MiniProgressBar label="Sodium" value={nutritionTotals.sodium} target={targetSodium} color="#FF9500" unit="mg" theme={theme} />
+              <MiniProgressBar label="Cholesterol" value={nutritionTotals.cholesterol} target={targetCholesterol} color="#AF52DE" unit="mg" theme={theme} />
+            </View>
+          </Card>
+
+          <Card style={[styles.nutritionCard, { width: NUTRITION_CARD_WIDTH }]}>
+            <ThemedText style={styles.cardTitleSmall}>Low Carb</ThemedText>
+            <View style={styles.progressBarsContainer}>
+              <MiniProgressBar label="Net Carbs" value={netCarbs} target={50} color="#007AFF" unit="g" theme={theme} />
+              <MiniProgressBar label="Sugar" value={nutritionTotals.sugar} target={targetSugar} color="#FF2D55" unit="g" theme={theme} />
+              <MiniProgressBar label="Fiber" value={nutritionTotals.fiber} target={targetFiber} color="#34C759" unit="g" theme={theme} />
+            </View>
+          </Card>
         </ScrollView>
 
         <View style={styles.paginationDots}>
-          {[0, 1].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <View
               key={i}
               style={[
@@ -433,6 +461,38 @@ function ActionButton({
         {label}
       </ThemedText>
     </Pressable>
+  );
+}
+
+function MiniProgressBar({
+  label,
+  value,
+  target,
+  color,
+  unit,
+  theme,
+}: {
+  label: string;
+  value: number;
+  target: number;
+  color: string;
+  unit: string;
+  theme: any;
+}) {
+  const progress = Math.min(value / target, 1);
+  const remaining = Math.max(0, target - value);
+  return (
+    <View style={styles.miniProgressContainer}>
+      <View style={styles.miniProgressHeader}>
+        <ThemedText style={styles.miniProgressLabel}>{label}</ThemedText>
+        <ThemedText style={[styles.miniProgressValue, { color: theme.textSecondary }]}>
+          {value}/{target}{unit}
+        </ThemedText>
+      </View>
+      <View style={[styles.miniProgressBg, { backgroundColor: theme.backgroundTertiary }]}>
+        <View style={[styles.miniProgressFill, { width: `${progress * 100}%`, backgroundColor: color }]} />
+      </View>
+    </View>
   );
 }
 
@@ -605,6 +665,39 @@ const styles = StyleSheet.create({
   dot: {
     width: 6,
     height: 6,
+    borderRadius: 3,
+  },
+  cardTitleSmall: {
+    ...Typography.subheadline,
+    fontWeight: "600",
+    marginBottom: Spacing.md,
+  },
+  progressBarsContainer: {
+    gap: Spacing.sm,
+  },
+  miniProgressContainer: {
+    width: "100%",
+  },
+  miniProgressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  miniProgressLabel: {
+    ...Typography.footnote,
+    fontWeight: "500",
+  },
+  miniProgressValue: {
+    ...Typography.caption,
+  },
+  miniProgressBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  miniProgressFill: {
+    height: "100%",
     borderRadius: 3,
   },
 });
