@@ -462,19 +462,20 @@ function generateStyles(): string {
 }
 
 function generateWeekOverview(week: WeekData, challenge: Challenge): string {
+  const nutritionWithData = week.dailyNutrition.filter(d => d.calories > 0 || d.protein > 0 || d.carbs > 0 || d.fat > 0);
   const nutritionWithCalories = week.dailyNutrition.filter(d => d.calories > 0);
   const avgCalories = nutritionWithCalories.length > 0 
     ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.calories, 0) / nutritionWithCalories.length)
     : null;
   
-  const avgProtein = nutritionWithCalories.length > 0
-    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.protein, 0) / nutritionWithCalories.length)
+  const avgProtein = nutritionWithData.length > 0
+    ? Math.round(nutritionWithData.reduce((sum, d) => sum + d.protein, 0) / nutritionWithData.length)
     : 0;
-  const avgCarbs = nutritionWithCalories.length > 0
-    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.carbs, 0) / nutritionWithCalories.length)
+  const avgCarbs = nutritionWithData.length > 0
+    ? Math.round(nutritionWithData.reduce((sum, d) => sum + d.carbs, 0) / nutritionWithData.length)
     : 0;
-  const avgFat = nutritionWithCalories.length > 0
-    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.fat, 0) / nutritionWithCalories.length)
+  const avgFat = nutritionWithData.length > 0
+    ? Math.round(nutritionWithData.reduce((sum, d) => sum + d.fat, 0) / nutritionWithData.length)
     : 0;
 
   const workoutsCompleted = week.workoutLogs.filter(w => w.type !== "Rest").length;
@@ -674,19 +675,20 @@ function generateCompactPhotoSection(week: WeekData, base64Image: string | null,
 }
 
 function generateCompactOverview(week: WeekData, challenge: Challenge): string {
+  const nutritionWithData = week.dailyNutrition.filter(d => d.calories > 0 || d.protein > 0 || d.carbs > 0 || d.fat > 0);
   const nutritionWithCalories = week.dailyNutrition.filter(d => d.calories > 0);
   const avgCalories = nutritionWithCalories.length > 0 
     ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.calories, 0) / nutritionWithCalories.length)
     : null;
   
-  const avgProtein = nutritionWithCalories.length > 0
-    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.protein, 0) / nutritionWithCalories.length)
+  const avgProtein = nutritionWithData.length > 0
+    ? Math.round(nutritionWithData.reduce((sum, d) => sum + d.protein, 0) / nutritionWithData.length)
     : 0;
-  const avgCarbs = nutritionWithCalories.length > 0
-    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.carbs, 0) / nutritionWithCalories.length)
+  const avgCarbs = nutritionWithData.length > 0
+    ? Math.round(nutritionWithData.reduce((sum, d) => sum + d.carbs, 0) / nutritionWithData.length)
     : 0;
-  const avgFat = nutritionWithCalories.length > 0
-    ? Math.round(nutritionWithCalories.reduce((sum, d) => sum + d.fat, 0) / nutritionWithCalories.length)
+  const avgFat = nutritionWithData.length > 0
+    ? Math.round(nutritionWithData.reduce((sum, d) => sum + d.fat, 0) / nutritionWithData.length)
     : 0;
 
   const workoutsCompleted = week.workoutLogs.filter(w => w.type !== "Rest").length;
@@ -809,7 +811,7 @@ function generateFinalSummary(data: PDFData): string {
   const lastWeight = allCheckIns.length > 0 ? allCheckIns[allCheckIns.length - 1]?.weight : null;
   const totalChange = lastWeight ? lastWeight - data.challenge.startWeight : null;
 
-  const daysLogged = allNutrition.filter(d => d.calories > 0 || d.protein > 0).length;
+  const daysLogged = allNutrition.filter(d => d.calories > 0 || d.protein > 0 || d.carbs > 0 || d.fat > 0).length;
   const totalDays = data.weeks.length * 7;
   const compliance = totalDays > 0 ? Math.round((daysLogged / totalDays) * 100) : 0;
 
