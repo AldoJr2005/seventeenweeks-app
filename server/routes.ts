@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import {
   insertChallengeSchema, insertDayLogSchema, insertWorkoutLogSchema,
   insertWeeklyPhotoSchema, insertWeeklyCheckInSchema, insertHabitLogSchema,
-  insertAppSettingsSchema
+  insertUserProfileSchema, insertAppSettingsSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -295,6 +295,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Failed to update settings" });
+    }
+  });
+
+  // User profile routes
+  app.get("/api/profile", async (req, res) => {
+    try {
+      const profile = await storage.getUserProfile();
+      res.json(profile || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.post("/api/profile", async (req, res) => {
+    try {
+      const parsed = insertUserProfileSchema.parse(req.body);
+      const profile = await storage.createUserProfile(parsed);
+      res.status(201).json(profile);
+    } catch (error: any) {
+      console.error("Profile creation error:", error);
+      res.status(400).json({ error: error.message || "Invalid profile data" });
+    }
+  });
+
+  app.patch("/api/profile/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateUserProfile(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Profile not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  app.delete("/api/profile/:id", async (req, res) => {
+    try {
+      await storage.deleteUserProfile(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete profile" });
+    }
+  });
+
+  app.post("/api/profile/verify-password", async (req, res) => {
+    try {
+      const { passwordHash } = req.body;
+      const profile = await storage.getUserProfile();
+      if (!profile) {
+        return res.status(404).json({ error: "No profile found" });
+      }
+      const isValid = profile.passwordHash === passwordHash;
+      res.json({ valid: isValid });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to verify password" });
     }
   });
 

@@ -109,6 +109,20 @@ export const reminderLogs = pgTable("reminder_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User profile (for authentication and personal info)
+export const userProfiles = pgTable("user_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  heightValue: real("height_value").notNull(),
+  heightUnit: varchar("height_unit", { length: 10 }).notNull().default("ft"),
+  weightUnit: varchar("weight_unit", { length: 10 }).notNull().default("lbs"),
+  passwordHash: text("password_hash").notNull(),
+  requirePasswordOnOpen: boolean("require_password_on_open").default(true),
+  autoLockMinutes: integer("auto_lock_minutes").default(5),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // App settings (for single user)
 export const appSettings = pgTable("app_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -180,6 +194,7 @@ export const insertWeeklyPhotoSchema = createInsertSchema(weeklyPhotos).omit({ i
 export const insertWeeklyCheckInSchema = createInsertSchema(weeklyCheckIns).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertHabitLogSchema = createInsertSchema(habitLogs).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertReminderLogSchema = createInsertSchema(reminderLogs).omit({ id: true, createdAt: true });
+export const insertUserProfileSchema = createInsertSchema(userProfiles).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertAppSettingsSchema = createInsertSchema(appSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Types
@@ -197,6 +212,8 @@ export type HabitLog = typeof habitLogs.$inferSelect;
 export type InsertHabitLog = z.infer<typeof insertHabitLogSchema>;
 export type ReminderLog = typeof reminderLogs.$inferSelect;
 export type InsertReminderLog = z.infer<typeof insertReminderLogSchema>;
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = z.infer<typeof insertUserProfileSchema>;
 export type AppSettings = typeof appSettings.$inferSelect;
 export type InsertAppSettings = z.infer<typeof insertAppSettingsSchema>;
 

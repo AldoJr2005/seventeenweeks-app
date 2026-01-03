@@ -1,5 +1,5 @@
 import {
-  challenges, dayLogs, workoutLogs, weeklyPhotos, weeklyCheckIns, habitLogs, reminderLogs, appSettings,
+  challenges, dayLogs, workoutLogs, weeklyPhotos, weeklyCheckIns, habitLogs, reminderLogs, userProfiles, appSettings,
   type Challenge, type InsertChallenge,
   type DayLog, type InsertDayLog,
   type WorkoutLog, type InsertWorkoutLog,
@@ -7,6 +7,7 @@ import {
   type WeeklyCheckIn, type InsertWeeklyCheckIn,
   type HabitLog, type InsertHabitLog,
   type ReminderLog, type InsertReminderLog,
+  type UserProfile, type InsertUserProfile,
   type AppSettings, type InsertAppSettings,
 } from "@shared/schema";
 import { db } from "./db";
@@ -51,6 +52,12 @@ export interface IStorage {
   // Reminder Logs
   getReminderLogs(challengeId: string): Promise<ReminderLog[]>;
   createReminderLog(reminderLog: InsertReminderLog): Promise<ReminderLog>;
+  
+  // User Profile
+  getUserProfile(): Promise<UserProfile | undefined>;
+  createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
+  updateUserProfile(id: string, profile: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
+  deleteUserProfile(id: string): Promise<void>;
   
   // App Settings
   getAppSettings(): Promise<AppSettings | undefined>;
@@ -183,6 +190,26 @@ export class DatabaseStorage implements IStorage {
   async createReminderLog(reminderLog: InsertReminderLog): Promise<ReminderLog> {
     const [created] = await db.insert(reminderLogs).values(reminderLog).returning();
     return created;
+  }
+
+  // User Profile
+  async getUserProfile(): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfiles).limit(1);
+    return profile || undefined;
+  }
+
+  async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
+    const [created] = await db.insert(userProfiles).values(profile).returning();
+    return created;
+  }
+
+  async updateUserProfile(id: string, profile: Partial<InsertUserProfile>): Promise<UserProfile | undefined> {
+    const [updated] = await db.update(userProfiles).set({ ...profile, updatedAt: new Date() }).where(eq(userProfiles.id, id)).returning();
+    return updated || undefined;
+  }
+
+  async deleteUserProfile(id: string): Promise<void> {
+    await db.delete(userProfiles).where(eq(userProfiles.id, id));
   }
 
   // App Settings
