@@ -472,16 +472,14 @@ export default function SetupScreen() {
               />
             </View>
 
-            {profile ? (
-              <Pressable style={styles.loginLink} onPress={() => refreshAuth()}>
-                <ThemedText style={[styles.loginLinkText, { color: theme.textSecondary }]}>
-                  Already have an account?{" "}
-                </ThemedText>
-                <ThemedText style={[styles.loginLinkText, { color: theme.primary }]}>
-                  Login
-                </ThemedText>
-              </Pressable>
-            ) : null}
+            <Pressable style={styles.loginLink} onPress={() => refreshAuth()}>
+              <ThemedText style={[styles.loginLinkText, { color: theme.textSecondary }]}>
+                Already have an account?{" "}
+              </ThemedText>
+              <ThemedText style={[styles.loginLinkText, { color: theme.primary }]}>
+                Login
+              </ThemedText>
+            </Pressable>
           </View>
         );
 
