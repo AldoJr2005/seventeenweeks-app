@@ -11,8 +11,16 @@ import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { useChallenge } from "@/hooks/useChallenge";
 import { useWeeklyPhotos } from "@/hooks/useWeeklyData";
+import { getApiUrl } from "@/lib/query-client";
 import type { ProgressStackParamList } from "@/navigation/ProgressStackNavigator";
 import type { WeeklyPhoto } from "@shared/schema";
+
+const getImageUri = (uri: string) => {
+  if (uri.startsWith('/')) {
+    return `${getApiUrl()}${uri}`;
+  }
+  return uri;
+};
 
 type RouteParams = RouteProp<ProgressStackParamList, "PhotoCompare">;
 
@@ -143,7 +151,7 @@ export default function PhotoCompareScreen() {
         <View style={styles.sideBySide}>
           <View style={styles.photoColumn}>
             {photo1 ? (
-              <Image source={{ uri: photo1.imageUri }} style={styles.sidePhoto} />
+              <Image source={{ uri: getImageUri(photo1.imageUri) }} style={styles.sidePhoto} />
             ) : (
               <View style={[styles.emptyPhoto, { backgroundColor: theme.backgroundDefault }]}>
                 <ThemedText style={{ color: theme.textSecondary }}>No photo</ThemedText>
@@ -155,7 +163,7 @@ export default function PhotoCompareScreen() {
           </View>
           <View style={styles.photoColumn}>
             {photo2 ? (
-              <Image source={{ uri: photo2.imageUri }} style={styles.sidePhoto} />
+              <Image source={{ uri: getImageUri(photo2.imageUri) }} style={styles.sidePhoto} />
             ) : (
               <View style={[styles.emptyPhoto, { backgroundColor: theme.backgroundDefault }]}>
                 <ThemedText style={{ color: theme.textSecondary }}>No photo</ThemedText>
@@ -170,12 +178,12 @@ export default function PhotoCompareScreen() {
         <GestureDetector gesture={panGesture}>
           <View style={styles.sliderContainer}>
             {photo2 ? (
-              <Image source={{ uri: photo2.imageUri }} style={styles.sliderPhoto} />
+              <Image source={{ uri: getImageUri(photo2.imageUri) }} style={styles.sliderPhoto} />
             ) : null}
             
             <Animated.View style={[styles.leftPhotoContainer, leftImageStyle]}>
               {photo1 ? (
-                <Image source={{ uri: photo1.imageUri }} style={styles.sliderPhotoLeft} />
+                <Image source={{ uri: getImageUri(photo1.imageUri) }} style={styles.sliderPhotoLeft} />
               ) : null}
             </Animated.View>
             

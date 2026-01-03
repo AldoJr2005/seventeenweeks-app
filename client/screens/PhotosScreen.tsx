@@ -40,7 +40,7 @@ export default function PhotosScreen() {
   };
 
   const getImageUri = (uri: string) => {
-    if (uri.startsWith('/assets/')) {
+    if (uri.startsWith('/')) {
       return `${getApiUrl()}${uri}`;
     }
     return uri;
