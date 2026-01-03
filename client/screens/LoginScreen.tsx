@@ -14,7 +14,7 @@ import { hashPassword, setSessionUnlocked } from "@/lib/auth";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { profile, unlock, resetApp, startNewAccount, refreshAuth } = useAuth();
 
   const [username, setUsername] = useState("");
@@ -341,6 +341,14 @@ export default function LoginScreen() {
           </View>
         </View>
       </Modal>
+
+      <View style={styles.signatureContainer}>
+        <Image
+          source={require("../../assets/images/signature.png")}
+          style={[styles.signature, { opacity: isDark ? 0.5 : 0.3, tintColor: isDark ? "#FFFFFF" : "#000000" }]}
+          resizeMode="contain"
+        />
+      </View>
     </KeyboardAwareScrollViewCompat>
   );
 }
@@ -481,5 +489,13 @@ const styles = StyleSheet.create({
   },
   newAccountConfirmButton: {
     flex: 1,
+  },
+  signatureContainer: {
+    alignItems: "center",
+    marginTop: Spacing["2xl"],
+  },
+  signature: {
+    width: 160,
+    height: 50,
   },
 });
