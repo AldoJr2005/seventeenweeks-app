@@ -97,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const startNewAccount = useCallback(() => {
     setWantsNewAccount(true);
+    setIsLoggedOut(false);
   }, []);
 
   const refreshAuth = useCallback(() => {
