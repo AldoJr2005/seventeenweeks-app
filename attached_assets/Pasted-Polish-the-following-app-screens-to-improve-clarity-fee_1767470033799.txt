@@ -1,0 +1,90 @@
+Polish the following app screens to improve clarity, feedback, and Apple-style UX. 
+Do NOT add new features beyond what’s listed. Focus on refinement, hierarchy, and intent.
+
+========================
+HOME (Daily Dashboard)
+========================
+1) Add a subtle personalized message under the date:
+   - Rotate short neutral phrases weekly (examples):
+     “Consistency over perfection.”
+     “Keep the streak alive.”
+     “One day at a time.”
+2) When all daily checklist items are completed:
+   - Replace “Pending” with a green “Completed” label
+   - Add subtle haptic feedback
+3) Keep layout minimal; do not overcrowd.
+
+========================
+NUTRITION LOG
+========================
+1) Display daily targets as context:
+   - Calories input shows “Target: XXXX cal”
+   - Protein/Carbs/Fat show target grams beneath inputs
+2) After saving nutrition:
+   - Show a small confirmation message:
+     “Nutrition logged.”
+   - Light haptic feedback
+3) If calories exceed target:
+   - Show neutral info text:
+     “Above target by X cal”
+   - Avoid red or warning language.
+
+========================
+WORKOUT LOG
+========================
+1) After saving a workout:
+   - Show a brief confirmation:
+     “Workout logged · Nice work.”
+   - Add subtle haptic feedback
+2) Keep workout selection fast; no extra prompts.
+
+========================
+PROGRESS → PHOTOS
+========================
+1) Replace empty timeline with a photo grid:
+   - One card per week labeled “Week X”
+   - If photo exists, show thumbnail
+   - If missing, show a placeholder card with camera icon
+2) Default Compare Photos view:
+   - Week 1 vs Current Week
+3) Keep navigation simple and clean.
+
+========================
+PROGRESS → INSIGHTS
+========================
+Convert insights from static facts to short interpretations:
+- “You’ve logged 91 days of nutrition → Strong consistency.”
+- “52 workouts completed → On track with your plan.”
+- “13 of 14 photos taken → Great weekly adherence.”
+- “22 lbs lost → Trending toward your goal.”
+
+Rules:
+- Neutral, encouraging tone
+- No coaching or guilt language
+- Keep insights short (1 line each)
+
+========================
+SETTINGS
+========================
+1) Group all plan-related items under a single “Plan” section:
+   - Calories
+   - Macros
+   - Workout
+   - Fasting
+   - Steps
+   - Sleep
+2) Add a “Reset Plan” option:
+   - Re-runs setup wizard
+   - Does NOT delete historical data
+3) Maintain clean spacing and avoid long scrolling blocks.
+
+========================
+GENERAL UI RULES
+========================
+- Apple-style hierarchy
+- Subtle haptics only (no animations)
+- No social, badges, or gamification
+- Focus on calm, private, disciplined experience
+
+DELIVERABLE:
+Polished UI/UX for all listed screens with improved clarity, feedback, and consistency.

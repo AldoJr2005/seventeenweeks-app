@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation } from "@react-navigation/native";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -13,6 +14,7 @@ import type { Challenge } from "@shared/schema";
 export default function WorkoutPreferencesScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const navigation = useNavigation();
   const { data: challenge } = useChallenge() as { data: Challenge | null };
   const updateChallenge = useUpdateChallenge();
@@ -50,7 +52,10 @@ export default function WorkoutPreferencesScreen() {
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={[
         styles.container,
-        { paddingBottom: insets.bottom + Spacing.xl },
+        { 
+          paddingTop: headerHeight + Spacing.lg,
+          paddingBottom: insets.bottom + Spacing.xl,
+        },
       ]}
     >
       <WorkoutPreferenceSetup

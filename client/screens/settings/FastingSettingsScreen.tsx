@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, StyleSheet, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useHeaderHeight } from "@react-navigation/elements";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 
@@ -37,6 +38,7 @@ function formatTime(timeStr: string): string {
 export default function FastingSettingsScreen() {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const navigation = useNavigation();
   const { data: challenge } = useChallenge() as { data: Challenge | null };
   const updateChallenge = useUpdateChallenge();
@@ -84,7 +86,10 @@ export default function FastingSettingsScreen() {
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={[
         styles.container,
-        { paddingBottom: insets.bottom + Spacing.xl },
+        { 
+          paddingTop: headerHeight + Spacing.lg,
+          paddingBottom: insets.bottom + Spacing.xl,
+        },
       ]}
     >
       <ThemedText style={styles.title}>Fasting Schedule</ThemedText>
