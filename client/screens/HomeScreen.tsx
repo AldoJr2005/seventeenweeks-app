@@ -187,13 +187,7 @@ export default function HomeScreen() {
         />
         <ActionButton
           icon="camera"
-          label="Upload Photo"
-          onPress={() => navigation.navigate("WeeklyCheckIn", { weekNumber: currentWeek })}
-          theme={theme}
-        />
-        <ActionButton
-          icon="check-circle"
-          label="Weekly Check-In"
+          label="Photo + Weigh-In"
           onPress={() => navigation.navigate("WeeklyCheckIn", { weekNumber: currentWeek })}
           theme={theme}
         />
