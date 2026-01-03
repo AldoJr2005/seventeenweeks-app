@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
+import { WeightChart } from "@/components/WeightChart";
 import { useChallenge } from "@/hooks/useChallenge";
 import { useWeeklyCheckIns, useWeeklyPhotos } from "@/hooks/useWeeklyData";
 import { useDayLogs } from "@/hooks/useDayLogs";
@@ -104,71 +105,45 @@ export default function ProgressScreen() {
       {activeTab === "Charts" ? (
         <>
           <Card style={styles.card}>
-            <ThemedText style={styles.cardTitle}>Weight Progress</ThemedText>
+            <View style={styles.cardHeader}>
+              <ThemedText style={styles.cardTitle}>Weight Progress</ThemedText>
+              {goalWeight ? (
+                <View style={[styles.paceBadge, { backgroundColor: onPace ? theme.success + "15" : theme.warning + "15" }]}>
+                  <ThemedText style={[styles.paceBadgeText, { color: onPace ? theme.success : theme.warning }]}>
+                    {onPace ? "On pace" : "Behind pace"}
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
             
             <View style={styles.weightStats}>
               <View style={styles.weightStat}>
                 <ThemedText style={[styles.weightLabel, { color: theme.textSecondary }]}>Start</ThemedText>
-                <ThemedText style={styles.weightValue}>{startWeight} {challenge.unit}</ThemedText>
+                <ThemedText style={styles.weightValue}>{startWeight}</ThemedText>
+                <ThemedText style={[styles.weightUnit, { color: theme.textSecondary }]}>{challenge.unit}</ThemedText>
               </View>
               <View style={styles.weightStat}>
                 <ThemedText style={[styles.weightLabel, { color: theme.textSecondary }]}>Current</ThemedText>
-                <ThemedText style={styles.weightValue}>{currentWeight || "-"} {challenge.unit}</ThemedText>
+                <ThemedText style={styles.weightValue}>{currentWeight || "-"}</ThemedText>
+                <ThemedText style={[styles.weightUnit, { color: theme.textSecondary }]}>{challenge.unit}</ThemedText>
               </View>
               <View style={styles.weightStat}>
                 <ThemedText style={[styles.weightLabel, { color: theme.textSecondary }]}>Change</ThemedText>
                 <ThemedText style={[styles.weightValue, { color: weightChange <= 0 ? theme.success : theme.warning }]}>
-                  {weightChange <= 0 ? "" : "+"}{weightChange.toFixed(1)} {challenge.unit}
+                  {weightChange <= 0 ? "" : "+"}{weightChange.toFixed(1)}
                 </ThemedText>
+                <ThemedText style={[styles.weightUnit, { color: theme.textSecondary }]}>{challenge.unit}</ThemedText>
               </View>
             </View>
 
-            {goalWeight ? (
-              <View style={[styles.paceIndicator, { backgroundColor: onPace ? theme.success + "20" : theme.warning + "20" }]}>
-                <Feather 
-                  name={onPace ? "trending-down" : "alert-circle"} 
-                  size={16} 
-                  color={onPace ? theme.success : theme.warning} 
-                />
-                <ThemedText style={{ color: onPace ? theme.success : theme.warning }}>
-                  {onPace ? "On pace to reach goal" : "Slightly behind pace"}
-                </ThemedText>
-              </View>
-            ) : null}
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <View style={styles.chartPlaceholder}>
-              <View style={[styles.chartLine, { backgroundColor: theme.border }]}>
-                {(() => {
-                  const weights = sortedCheckIns.map(c => c.weight || startWeight);
-                  const maxWeight = Math.max(startWeight, ...weights);
-                  const minWeight = Math.min(...weights);
-                  const range = maxWeight - minWeight || 1;
-                  
-                  return sortedCheckIns.map((checkIn, index) => {
-                    const weight = checkIn.weight || startWeight;
-                    const normalizedY = ((maxWeight - weight) / range) * 80 + 10;
-                    
-                    return (
-                      <View
-                        key={checkIn.id}
-                        style={[
-                          styles.chartDot,
-                          { 
-                            backgroundColor: theme.primary,
-                            left: `${(index / Math.max(sortedCheckIns.length - 1, 1)) * 100}%`,
-                            bottom: `${normalizedY}%`
-                          }
-                        ]}
-                      />
-                    );
-                  });
-                })()}
-              </View>
-              <View style={styles.chartLabels}>
-                <ThemedText style={[styles.chartLabel, { color: theme.textSecondary }]}>Week 1</ThemedText>
-                <ThemedText style={[styles.chartLabel, { color: theme.textSecondary }]}>Week 17</ThemedText>
-              </View>
-            </View>
+            <WeightChart
+              checkIns={sortedCheckIns}
+              startWeight={startWeight}
+              goalWeight={goalWeight}
+              unit={challenge.unit}
+            />
           </Card>
 
           <Card style={styles.card}>
@@ -295,14 +270,28 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: Spacing.lg,
   },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
   cardTitle: {
     ...Typography.headline,
-    marginBottom: Spacing.lg,
+  },
+  paceBadge: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.xs,
+  },
+  paceBadgeText: {
+    ...Typography.caption,
+    fontWeight: "600",
   },
   weightStats: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   weightStat: {
     alignItems: "center",
@@ -314,43 +303,13 @@ const styles = StyleSheet.create({
   weightValue: {
     ...Typography.title3,
   },
-  paceIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.sm,
-    marginBottom: Spacing.lg,
+  weightUnit: {
+    ...Typography.caption,
+    marginTop: 2,
   },
-  chartPlaceholder: {
-    height: 120,
-    position: "relative",
-  },
-  chartLine: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: "50%",
-    height: 2,
-  },
-  chartDot: {
-    position: "absolute",
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    transform: [{ translateX: -5 }, { translateY: -5 }],
-  },
-  chartLabels: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  chartLabel: {
-    ...Typography.footnote,
+  divider: {
+    height: 1,
+    marginVertical: Spacing.md,
   },
   complianceStats: {
     flexDirection: "row",

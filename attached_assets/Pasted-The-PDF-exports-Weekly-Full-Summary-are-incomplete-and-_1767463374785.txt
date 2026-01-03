@@ -1,0 +1,68 @@
+The PDF exports (Weekly + Full Summary) are incomplete and look unpolished. Fix the PDF generator so the PDF matches the app’s modern Apple-style UI AND includes weekly photos.
+
+CURRENT PROBLEMS (must fix):
+1) Text is clipping / nearly not visible in places and table layout breaks (overflow/wrapping issues).
+2) “WEEK X PHOTO” sections do not embed the actual weekly photo image (it shows the section but no image).
+3) The PDF looks like raw data instead of a designed report (no Apple-style layout).
+4) Empty weeks (not logged) look messy with lots of “—” rows and broken spacing.
+
+REQUIREMENTS (do ALL):
+A) Use a proper layout system for PDF:
+- Prefer HTML + CSS template -> PDF conversion OR react-pdf with a real component layout system.
+- Use consistent margins, spacing, typography hierarchy.
+- Ensure no text overlap or cutoffs. All tables must wrap/ellipsis gracefully.
+
+B) Apple-style design:
+- Cover page (for full report) with title, date range, and key totals.
+- Use “card sections” with rounded containers, subtle dividers, lots of whitespace.
+- Clean typography: big section headers, smaller labels, consistent alignment.
+- Avoid dumping text. Make it scannable.
+
+C) Weekly PDF layout (1 week):
+Page 1:
+- Header: Week X of 17 + date range
+- Summary cards row:
+  • Avg calories + macro targets (P/C/F)
+  • Workouts count + breakdown
+  • Habits summary (water days, avg steps, avg sleep)
+  • Weekly weigh-in (weekly weight + weekly change + total change)
+- A small, minimal chart (weight trend or calories trend) if feasible
+
+Page 2:
+- Weekly photo card:
+  • Embed the actual photo for that week (from local FileSystem URI)
+  • If missing, show a designed placeholder card “No photo uploaded”
+- Daily details table:
+  • Clean table with proper column widths and wrapping
+  • Format sleep to 1 decimal (ex: 6.5) NOT long decimals like 6.5666667
+  • Do not allow any row to split across pages
+  • Use “—” only where necessary and keep it aligned
+
+D) Full Summary PDF layout (all weeks):
+- Cover page + final recap page (start weight, current/final weight, total change, goal weight, compliance)
+- Each week gets its own section with:
+  • Weekly overview cards
+  • Weekly photo embedded (not just a header)
+  • Daily table
+- Add page numbers and consistent headers/footers
+- For weeks with no data: show a clean “Week not logged” card and omit the giant empty daily table.
+
+E) Image embedding (must work):
+- Photos are stored locally via Expo FileSystem. The PDF export must:
+  • Load the image file
+  • Embed it in the PDF at a consistent size (crop/contain nicely)
+  • Compress appropriately to keep PDF size reasonable
+
+F) Output:
+- Keep two export actions:
+  • Download Weekly PDF
+  • Download Full Summary PDF
+- The exported PDF must look modern, aligned, readable, and consistent with the app UI.
+
+DELIVERABLE:
+Update the PDF generator implementation + templates so:
+- No clipping/overflow
+- Weekly photos are embedded
+- Apple-style designed layout
+- Clean empty-week handling
+- Better number formatting (sleep rounded, etc.)
