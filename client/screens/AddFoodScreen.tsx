@@ -39,10 +39,15 @@ export default function AddFoodScreen() {
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
+  const [fiber, setFiber] = useState("");
+  const [sugar, setSugar] = useState("");
+  const [sodium, setSodium] = useState("");
+  const [cholesterol, setCholesterol] = useState("");
   const [servingLabel, setServingLabel] = useState("");
   const [servingsCount, setServingsCount] = useState("1");
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isInitialized, setIsInitialized] = useState(!editId);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const existingEntry = editId && foodEntries?.find((e: FoodEntry) => e.id === editId);
 
@@ -55,8 +60,17 @@ export default function AddFoodScreen() {
       setProtein(entry.proteinPerServing?.toString() || "");
       setCarbs(entry.carbsPerServing?.toString() || "");
       setFat(entry.fatPerServing?.toString() || "");
+      setFiber(entry.fiberPerServing?.toString() || "");
+      setSugar(entry.sugarPerServing?.toString() || "");
+      setSodium(entry.sodiumPerServing?.toString() || "");
+      setCholesterol(entry.cholesterolPerServing?.toString() || "");
       setServingLabel(entry.servingLabel || "");
       setServingsCount(entry.servingsCount.toString());
+      const hasAdvanced = (entry.fiberPerServing || 0) > 0 || 
+                          (entry.sugarPerServing || 0) > 0 ||
+                          (entry.sodiumPerServing || 0) > 0 ||
+                          (entry.cholesterolPerServing || 0) > 0;
+      setShowAdvanced(hasAdvanced);
       setIsInitialized(true);
     }
   }, [existingEntry, isInitialized]);
@@ -80,8 +94,13 @@ export default function AddFoodScreen() {
       proteinPerServing: protein ? parseFloat(protein) : 0,
       carbsPerServing: carbs ? parseFloat(carbs) : 0,
       fatPerServing: fat ? parseFloat(fat) : 0,
+      fiberPerServing: fiber ? parseFloat(fiber) : 0,
+      sugarPerServing: sugar ? parseFloat(sugar) : 0,
+      sodiumPerServing: sodium ? parseFloat(sodium) : 0,
+      cholesterolPerServing: cholesterol ? parseFloat(cholesterol) : 0,
       servingLabel: servingLabel || null,
       servingsCount: servingsNum,
+      source: "manual" as const,
     };
 
     try {
@@ -280,6 +299,82 @@ export default function AddFoodScreen() {
         </View>
       </View>
 
+      <Pressable 
+        style={styles.advancedToggle} 
+        onPress={() => setShowAdvanced(!showAdvanced)}
+      >
+        <ThemedText style={{ color: theme.primary }}>
+          {showAdvanced ? "Hide" : "Show"} Additional Nutrients
+        </ThemedText>
+        <Feather 
+          name={showAdvanced ? "chevron-up" : "chevron-down"} 
+          size={16} 
+          color={theme.primary} 
+        />
+      </Pressable>
+
+      {showAdvanced ? (
+        <View style={styles.advancedSection}>
+          <View style={styles.macrosRow}>
+            <View style={styles.macroInput}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                Fiber (g)
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="0"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                value={fiber}
+                onChangeText={setFiber}
+              />
+            </View>
+            <View style={styles.macroInput}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                Sugar (g)
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="0"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                value={sugar}
+                onChangeText={setSugar}
+              />
+            </View>
+          </View>
+
+          <View style={styles.macrosRow}>
+            <View style={styles.macroInput}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                Sodium (mg)
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="0"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="number-pad"
+                value={sodium}
+                onChangeText={setSodium}
+              />
+            </View>
+            <View style={styles.macroInput}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>
+                Cholesterol (mg)
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="0"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="number-pad"
+                value={cholesterol}
+                onChangeText={setCholesterol}
+              />
+            </View>
+          </View>
+        </View>
+      ) : null}
+
       {servingsNum > 1 ? (
         <Card style={styles.totalsCard}>
           <ThemedText style={[styles.totalsTitle, { color: theme.textSecondary }]}>
@@ -325,10 +420,11 @@ export default function AddFoodScreen() {
           ) : null}
           <Button
             onPress={handleSave}
+            loading={isSaving}
             disabled={!isValid || isSaving}
             style={styles.saveButton}
           >
-            {isSaving ? "Saving..." : editId ? "Update" : "Add Food"}
+            {editId ? "Update" : "Add"} Food
           </Button>
         </View>
       )}
@@ -343,7 +439,6 @@ const styles = StyleSheet.create({
   mealHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: Spacing.sm,
     marginBottom: Spacing.lg,
   },
@@ -359,56 +454,67 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
+    marginBottom: Spacing.lg,
     borderStyle: "dashed",
-    marginBottom: Spacing.xl,
   },
   inputGroup: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   inputGroupHalf: {
     flex: 1,
   },
   inputLabel: {
-    ...Typography.subheadline,
-    marginBottom: Spacing.sm,
+    ...Typography.caption,
+    marginBottom: Spacing.xs,
   },
   input: {
-    height: Spacing.inputHeight,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     ...Typography.body,
   },
   largeInput: {
-    height: 64,
-    fontSize: 28,
+    ...Typography.title2,
     fontWeight: "600",
     textAlign: "center",
   },
   row: {
     flexDirection: "row",
     gap: Spacing.md,
-    marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    ...Typography.headline,
+    ...Typography.subheadline,
+    fontWeight: "600",
     marginBottom: Spacing.md,
   },
   macrosRow: {
     flexDirection: "row",
     gap: Spacing.md,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   macroInput: {
     flex: 1,
   },
+  advancedToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  advancedSection: {
+    marginBottom: Spacing.md,
+  },
   totalsCard: {
-    marginBottom: Spacing.xl,
+    padding: Spacing.lg,
+    marginTop: Spacing.lg,
   },
   totalsTitle: {
-    ...Typography.footnote,
+    ...Typography.caption,
     textAlign: "center",
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   totalsRow: {
     flexDirection: "row",
@@ -428,10 +534,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: Spacing.sm,
+    gap: Spacing.md,
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
-    marginTop: "auto",
+    marginTop: Spacing.lg,
   },
   confirmationText: {
     ...Typography.headline,
@@ -440,16 +546,15 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: "row",
     gap: Spacing.md,
-    marginTop: "auto",
-    paddingTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
   deleteButton: {
-    width: 48,
-    height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    justifyContent: "center",
+    width: 56,
+    height: 56,
     alignItems: "center",
+    justifyContent: "center",
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
   saveButton: {
     flex: 1,
