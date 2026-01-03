@@ -31,8 +31,8 @@ function AppContent() {
     );
   }
 
-  // Show login screen for returning users who clicked "Login" from setup
-  if (isLoggedOut && profile) {
+  // Show login screen when user clicks "Login" button
+  if (isLoggedOut) {
     return <LoginScreen />;
   }
 
