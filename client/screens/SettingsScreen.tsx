@@ -30,7 +30,7 @@ export default function SettingsScreen() {
 
   const { data: challenge } = useChallenge();
   const updateChallenge = useUpdateChallenge();
-  const { profile, lock, refreshAuth } = useAuth();
+  const { profile, lock, logout, refreshAuth } = useAuth();
   const updateProfile = useUpdateProfile();
 
   const [smartReminders, setSmartReminders] = useState(
@@ -118,6 +118,17 @@ export default function SettingsScreen() {
 
   const handleLockApp = async () => {
     await lock();
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Log Out",
+      "You'll need to enter your password to log back in. Your data will be preserved.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Log Out", style: "destructive", onPress: async () => { await logout(); } },
+      ]
+    );
   };
 
   return (
@@ -300,6 +311,16 @@ export default function SettingsScreen() {
           value="1.0.0"
           theme={theme}
         />
+      </Card>
+
+      <ThemedText style={styles.sectionHeader}>Account</ThemedText>
+      <Card style={styles.section}>
+        <Pressable style={styles.settingsRow} onPress={handleLogout}>
+          <View style={styles.settingsRowLeft}>
+            <Feather name="log-out" size={20} color="#FF3B30" />
+            <ThemedText style={[styles.settingsLabel, { color: "#FF3B30" }]}>Log Out</ThemedText>
+          </View>
+        </Pressable>
       </Card>
 
       <Modal visible={showPasswordModal} transparent animationType="fade">

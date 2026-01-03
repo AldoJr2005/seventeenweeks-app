@@ -16,7 +16,7 @@ import SetupScreen from "@/screens/SetupScreen";
 import LoginScreen from "@/screens/LoginScreen";
 
 function AppContent() {
-  const { isLoading, needsSetup, isUnlocked, profile } = useAuth();
+  const { isLoading, needsSetup, isUnlocked, isLoggedOut, profile } = useAuth();
 
   if (isLoading) {
     return (
@@ -30,7 +30,7 @@ function AppContent() {
     return <SetupScreen />;
   }
 
-  if (profile?.requirePasswordOnOpen && !isUnlocked) {
+  if (isLoggedOut || (profile?.requirePasswordOnOpen && !isUnlocked)) {
     return <LoginScreen />;
   }
 

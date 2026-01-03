@@ -8,9 +8,12 @@ interface AuthContextType {
   isLoading: boolean;
   isUnlocked: boolean;
   needsSetup: boolean;
+  isLoggedOut: boolean;
   unlock: (password: string) => Promise<boolean>;
   lock: () => Promise<void>;
+  logout: () => Promise<void>;
   resetApp: () => Promise<void>;
+  startNewAccount: () => void;
   refreshAuth: () => void;
 }
 
@@ -23,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [isLoggedOut, setIsLoggedOut] = useState(false);
+  const [wantsNewAccount, setWantsNewAccount] = useState(false);
 
   const checkSession = useCallback(async () => {
     if (profile) {
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result.valid) {
         await setSessionUnlocked(true);
         setIsUnlocked(true);
+        setIsLoggedOut(false);
         return true;
       }
       return false;
@@ -71,21 +77,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsUnlocked(false);
   }, []);
 
+  const logout = useCallback(async () => {
+    await clearSession();
+    setIsUnlocked(false);
+    setIsLoggedOut(true);
+  }, []);
+
   const resetApp = useCallback(async () => {
     if (profile) {
       await deleteProfile.mutateAsync(profile.id);
       await clearSession();
       setIsUnlocked(false);
+      setIsLoggedOut(false);
+      setWantsNewAccount(false);
       refetch();
     }
   }, [profile, deleteProfile, refetch]);
 
+  const startNewAccount = useCallback(() => {
+    setWantsNewAccount(true);
+  }, []);
+
   const refreshAuth = useCallback(() => {
     refetch();
+    setIsLoggedOut(false);
+    setWantsNewAccount(false);
   }, [refetch]);
 
   const isLoading = profileLoading || checkingSession;
-  const needsSetup = !profileLoading && !profile;
+  const needsSetup = !profileLoading && (!profile || wantsNewAccount);
 
   return (
     <AuthContext.Provider
@@ -94,9 +114,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isUnlocked,
         needsSetup,
+        isLoggedOut,
         unlock,
         lock,
+        logout,
         resetApp,
+        startNewAccount,
         refreshAuth,
       }}
     >

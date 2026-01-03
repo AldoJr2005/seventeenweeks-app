@@ -12,13 +12,15 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
-  const { profile, unlock, resetApp } = useAuth();
+  const { profile, unlock, resetApp, startNewAccount } = useAuth();
 
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState("");
+  const [showNewAccountModal, setShowNewAccountModal] = useState(false);
+  const [newAccountConfirmText, setNewAccountConfirmText] = useState("");
 
   const handleUnlock = async () => {
     if (!password) return;
@@ -42,6 +44,14 @@ export default function LoginScreen() {
     await resetApp();
     setShowResetModal(false);
     setResetConfirmText("");
+  };
+
+  const handleNewAccount = async () => {
+    if (newAccountConfirmText.toLowerCase() !== "confirm") return;
+    
+    await resetApp();
+    setShowNewAccountModal(false);
+    setNewAccountConfirmText("");
   };
 
   const userName = profile?.name || "there";
@@ -81,6 +91,18 @@ export default function LoginScreen() {
             Forgot password?
           </ThemedText>
         </Pressable>
+
+        <View style={styles.dividerContainer}>
+          <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+          <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
+          <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+        </View>
+
+        <Pressable style={styles.newAccountButton} onPress={() => setShowNewAccountModal(true)}>
+          <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
+            Create New Account
+          </ThemedText>
+        </Pressable>
       </View>
 
       <Modal visible={showResetModal} transparent animationType="fade">
@@ -111,6 +133,40 @@ export default function LoginScreen() {
                 style={[styles.resetButton, { backgroundColor: "#FF3B30" }]}
               >
                 Reset Everything
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showNewAccountModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText style={styles.modalTitle}>Create New Account?</ThemedText>
+            <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
+              This will permanently delete your current profile, challenge progress, photos, and all logged data to create a fresh account.
+            </ThemedText>
+            <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
+              Type "confirm" to proceed:
+            </ThemedText>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              placeholder="Type 'confirm'"
+              placeholderTextColor={theme.textSecondary}
+              value={newAccountConfirmText}
+              onChangeText={setNewAccountConfirmText}
+              autoCapitalize="none"
+            />
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.cancelButton} onPress={() => { setShowNewAccountModal(false); setNewAccountConfirmText(""); }}>
+                <ThemedText style={{ color: theme.primary }}>Cancel</ThemedText>
+              </Pressable>
+              <Button
+                onPress={handleNewAccount}
+                disabled={newAccountConfirmText.toLowerCase() !== "confirm"}
+                style={styles.newAccountConfirmButton}
+              >
+                Create New Account
               </Button>
             </View>
           </View>
@@ -200,6 +256,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   resetButton: {
+    flex: 1,
+  },
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: Spacing.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: Spacing.md,
+    ...Typography.footnote,
+  },
+  newAccountButton: {
+    alignSelf: "center",
+    paddingVertical: Spacing.md,
+  },
+  newAccountText: {
+    ...Typography.callout,
+    fontWeight: "600",
+  },
+  newAccountConfirmButton: {
     flex: 1,
   },
 });
