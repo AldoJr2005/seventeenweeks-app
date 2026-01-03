@@ -4,14 +4,16 @@ import type { InsertHabitLog } from "@shared/schema";
 
 export function useHabitLogs(challengeId: string | undefined) {
   return useQuery({
-    queryKey: ["/api/habit-logs", challengeId],
+    queryKey: ["/api/habit-logs", { challengeId }],
+    queryFn: () => api.habitLogs.getAll(challengeId!),
     enabled: !!challengeId,
   });
 }
 
 export function useHabitLog(date: string) {
   return useQuery({
-    queryKey: ["/api/habit-logs", date],
+    queryKey: ["/api/habit-logs/date", date],
+    queryFn: () => api.habitLogs.getByDate(date),
   });
 }
 
@@ -20,8 +22,9 @@ export function useCreateHabitLog() {
   
   return useMutation({
     mutationFn: (data: InsertHabitLog) => api.habitLogs.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habit-logs"] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-logs"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-logs/date", variables.date] });
     },
   });
 }
@@ -32,7 +35,7 @@ export function useUpdateHabitLog() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<InsertHabitLog> }) => api.habitLogs.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/habit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/habit-logs"], exact: false });
     },
   });
 }

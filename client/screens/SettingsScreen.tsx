@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, View, StyleSheet, Pressable, Switch, Alert } from "react-native";
+import { ScrollView, View, StyleSheet, Pressable, Switch, Alert, Modal, TextInput } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -11,7 +11,11 @@ import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
 import { useChallenge, useUpdateChallenge } from "@/hooks/useChallenge";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUpdateProfile } from "@/hooks/useProfile";
+import { changePasswordOnServer } from "@/lib/auth";
 import type { SettingsStackParamList } from "@/navigation/SettingsStackNavigator";
 import type { Challenge } from "@shared/schema";
 
@@ -26,10 +30,18 @@ export default function SettingsScreen() {
 
   const { data: challenge } = useChallenge();
   const updateChallenge = useUpdateChallenge();
+  const { profile, lock, refreshAuth } = useAuth();
+  const updateProfile = useUpdateProfile();
 
   const [smartReminders, setSmartReminders] = useState(
     (challenge as Challenge | undefined)?.smartReminders ?? true
   );
+  const [requirePassword, setRequirePassword] = useState(profile?.requirePasswordOnOpen ?? true);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const handleToggleSmartReminders = async () => {
     if (!challenge) return;
@@ -57,6 +69,57 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleToggleRequirePassword = async () => {
+    if (!profile) return;
+    const newValue = !requirePassword;
+    setRequirePassword(newValue);
+    try {
+      await updateProfile.mutateAsync({
+        id: profile.id,
+        data: { requirePasswordOnOpen: newValue },
+      });
+      refreshAuth();
+    } catch (error) {
+      setRequirePassword(!newValue);
+      Alert.alert("Error", "Failed to update settings");
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!profile) return;
+    
+    if (newPassword.length < 4) {
+      setPasswordError("Password must be at least 4 characters");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("Passwords don't match");
+      return;
+    }
+
+    try {
+      const result = await changePasswordOnServer(oldPassword, newPassword);
+      if (!result.success) {
+        setPasswordError(result.error || "Failed to change password");
+        return;
+      }
+      
+      setShowPasswordModal(false);
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setPasswordError("");
+      Alert.alert("Success", "Password updated successfully");
+      refreshAuth();
+    } catch (error) {
+      setPasswordError("Failed to update password");
+    }
+  };
+
+  const handleLockApp = async () => {
+    await lock();
+  };
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
@@ -67,6 +130,68 @@ export default function SettingsScreen() {
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
+      <ThemedText style={styles.sectionHeader}>Profile</ThemedText>
+      <Card style={styles.section}>
+        <SettingsRow
+          icon="user"
+          label="Name"
+          value={profile?.name || "Not set"}
+          theme={theme}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingsRow
+          icon="maximize-2"
+          label="Height"
+          value={profile ? (profile.heightUnit === "ft" 
+            ? `${Math.floor(profile.heightValue / 12)}' ${Math.round(profile.heightValue % 12)}"` 
+            : `${profile.heightValue} cm`) : "Not set"}
+          theme={theme}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingsRow
+          icon="activity"
+          label="Weight Unit"
+          value={profile?.weightUnit?.toUpperCase() || "LBS"}
+          theme={theme}
+        />
+      </Card>
+
+      <ThemedText style={styles.sectionHeader}>Security</ThemedText>
+      <Card style={styles.section}>
+        <View style={styles.settingsRow}>
+          <View style={styles.settingsRowLeft}>
+            <Feather name="lock" size={20} color={theme.textSecondary} />
+            <View>
+              <ThemedText style={styles.settingsLabel}>Require Password</ThemedText>
+              <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
+                Lock app on open
+              </ThemedText>
+            </View>
+          </View>
+          <Switch
+            value={requirePassword}
+            onValueChange={handleToggleRequirePassword}
+            trackColor={{ false: theme.border, true: theme.success }}
+            thumbColor="#FFF"
+          />
+        </View>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Pressable style={styles.settingsRow} onPress={() => setShowPasswordModal(true)}>
+          <View style={styles.settingsRowLeft}>
+            <Feather name="key" size={20} color={theme.textSecondary} />
+            <ThemedText style={styles.settingsLabel}>Change Password</ThemedText>
+          </View>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Pressable style={styles.settingsRow} onPress={handleLockApp}>
+          <View style={styles.settingsRowLeft}>
+            <Feather name="log-out" size={20} color={theme.primary} />
+            <ThemedText style={[styles.settingsLabel, { color: theme.primary }]}>Lock App Now</ThemedText>
+          </View>
+        </Pressable>
+      </Card>
+
       <ThemedText style={styles.sectionHeader}>Challenge</ThemedText>
       <Card style={styles.section}>
         <SettingsRow
@@ -176,6 +301,60 @@ export default function SettingsScreen() {
           theme={theme}
         />
       </Card>
+
+      <Modal visible={showPasswordModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
+            <ThemedText style={styles.modalTitle}>Change Password</ThemedText>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              placeholder="Current password"
+              placeholderTextColor={theme.textSecondary}
+              secureTextEntry
+              value={oldPassword}
+              onChangeText={(t) => { setOldPassword(t); setPasswordError(""); }}
+            />
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              placeholder="New password (min 4 characters)"
+              placeholderTextColor={theme.textSecondary}
+              secureTextEntry
+              value={newPassword}
+              onChangeText={(t) => { setNewPassword(t); setPasswordError(""); }}
+            />
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
+              placeholder="Confirm new password"
+              placeholderTextColor={theme.textSecondary}
+              secureTextEntry
+              value={confirmNewPassword}
+              onChangeText={(t) => { setConfirmNewPassword(t); setPasswordError(""); }}
+            />
+            {passwordError ? <ThemedText style={styles.errorText}>{passwordError}</ThemedText> : null}
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowPasswordModal(false);
+                  setOldPassword("");
+                  setNewPassword("");
+                  setConfirmNewPassword("");
+                  setPasswordError("");
+                }}
+              >
+                <ThemedText style={{ color: theme.primary }}>Cancel</ThemedText>
+              </Pressable>
+              <Button
+                onPress={handleChangePassword}
+                disabled={!oldPassword || !newPassword || !confirmNewPassword}
+                style={styles.saveButton}
+              >
+                Save
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -240,5 +419,48 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginLeft: 44,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: "100%",
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    gap: Spacing.md,
+  },
+  modalTitle: {
+    ...Typography.title3,
+    textAlign: "center",
+    marginBottom: Spacing.md,
+  },
+  input: {
+    height: Spacing.inputHeight,
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.lg,
+    ...Typography.body,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.lg,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+  },
+  saveButton: {
+    flex: 1,
+  },
+  errorText: {
+    color: "#FF3B30",
+    textAlign: "center",
+    ...Typography.footnote,
   },
 });

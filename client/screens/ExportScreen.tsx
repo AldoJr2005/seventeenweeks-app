@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, View, StyleSheet, Pressable, Alert, Share } from "react-native";
+import { ScrollView, View, StyleSheet, Pressable, Alert, Share, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
@@ -14,14 +14,18 @@ import { useDayLogs } from "@/hooks/useDayLogs";
 import { useWorkoutLogs } from "@/hooks/useWorkoutLogs";
 import { useHabitLogs } from "@/hooks/useHabitLogs";
 import { useWeeklyCheckIns, useWeeklyPhotos } from "@/hooks/useWeeklyData";
+import { useAuth } from "@/contexts/AuthContext";
 import { getCurrentWeekNumber } from "@/lib/date-utils";
-import type { Challenge, WeeklyCheckIn, DayLog, WorkoutLog, HabitLog } from "@shared/schema";
+import { generateWeeklyPDF, generateFullChallengePDF, sharePDF, getWeekDataFromLogs } from "@/lib/pdf-generator";
+import type { Challenge, WeeklyCheckIn, WeeklyPhoto, DayLog, WorkoutLog, HabitLog } from "@shared/schema";
 
 export default function ExportScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const { theme } = useTheme();
+  const { profile } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState<"weekly" | "full" | null>(null);
 
   const { data: challenge } = useChallenge();
   const { data: dayLogs } = useDayLogs(challenge?.id);
@@ -68,6 +72,57 @@ export default function ExportScreen() {
       Alert.alert("Export Failed", "Unable to export data. Please try again.");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleCurrentWeekPDF = async () => {
+    if (!challengeData) return;
+    setPdfLoading("weekly");
+    try {
+      const weekData = getWeekDataFromLogs(
+        currentWeek,
+        challengeData,
+        (dayLogs as DayLog[] | undefined) || [],
+        (workoutLogs as WorkoutLog[] | undefined) || [],
+        (habitLogs as HabitLog[] | undefined) || [],
+        (weeklyPhotos as WeeklyPhoto[] | undefined) || [],
+        checkIns
+      );
+      const pdfUri = await generateWeeklyPDF(weekData, challengeData, profile);
+      await sharePDF(pdfUri, `Week${currentWeek}_Report.pdf`);
+    } catch (error) {
+      Alert.alert("PDF Error", "Unable to generate PDF. Please try again.");
+    } finally {
+      setPdfLoading(null);
+    }
+  };
+
+  const handleFullChallengePDF = async () => {
+    if (!challengeData) return;
+    setPdfLoading("full");
+    try {
+      const weeks = [];
+      for (let i = 1; i <= Math.min(currentWeek, 17); i++) {
+        weeks.push(getWeekDataFromLogs(
+          i,
+          challengeData,
+          (dayLogs as DayLog[] | undefined) || [],
+          (workoutLogs as WorkoutLog[] | undefined) || [],
+          (habitLogs as HabitLog[] | undefined) || [],
+          (weeklyPhotos as WeeklyPhoto[] | undefined) || [],
+          checkIns
+        ));
+      }
+      const pdfUri = await generateFullChallengePDF({
+        challenge: challengeData,
+        profile,
+        weeks,
+      });
+      await sharePDF(pdfUri, `17Week_Challenge_Report.pdf`);
+    } catch (error) {
+      Alert.alert("PDF Error", "Unable to generate full report. Please try again.");
+    } finally {
+      setPdfLoading(null);
     }
   };
 
@@ -150,7 +205,51 @@ Keep up the great work!
         </View>
       </Card>
 
-      <ThemedText style={styles.sectionTitle}>Export Options</ThemedText>
+      <ThemedText style={styles.sectionTitle}>PDF Reports</ThemedText>
+
+      <Pressable
+        style={[styles.exportOption, { backgroundColor: theme.backgroundDefault }]}
+        onPress={handleCurrentWeekPDF}
+        disabled={pdfLoading !== null}
+      >
+        <View style={[styles.exportIcon, { backgroundColor: "#FF3B30" + "20" }]}>
+          {pdfLoading === "weekly" ? (
+            <ActivityIndicator size="small" color="#FF3B30" />
+          ) : (
+            <Feather name="file" size={24} color="#FF3B30" />
+          )}
+        </View>
+        <View style={styles.exportInfo}>
+          <ThemedText style={styles.exportTitle}>Week {currentWeek} PDF</ThemedText>
+          <ThemedText style={[styles.exportDescription, { color: theme.textSecondary }]}>
+            Current week report with all daily data
+          </ThemedText>
+        </View>
+        <Feather name="download" size={20} color={theme.textSecondary} />
+      </Pressable>
+
+      <Pressable
+        style={[styles.exportOption, { backgroundColor: theme.backgroundDefault }]}
+        onPress={handleFullChallengePDF}
+        disabled={pdfLoading !== null}
+      >
+        <View style={[styles.exportIcon, { backgroundColor: "#5856D6" + "20" }]}>
+          {pdfLoading === "full" ? (
+            <ActivityIndicator size="small" color="#5856D6" />
+          ) : (
+            <Feather name="book" size={24} color="#5856D6" />
+          )}
+        </View>
+        <View style={styles.exportInfo}>
+          <ThemedText style={styles.exportTitle}>Full Challenge PDF</ThemedText>
+          <ThemedText style={[styles.exportDescription, { color: theme.textSecondary }]}>
+            Complete {currentWeek}-week report with photos
+          </ThemedText>
+        </View>
+        <Feather name="download" size={20} color={theme.textSecondary} />
+      </Pressable>
+
+      <ThemedText style={[styles.sectionTitle, { marginTop: Spacing.lg }]}>Other Exports</ThemedText>
 
       <Pressable
         style={[styles.exportOption, { backgroundColor: theme.backgroundDefault }]}

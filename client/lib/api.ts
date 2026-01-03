@@ -6,6 +6,7 @@ import type {
   WeeklyPhoto, InsertWeeklyPhoto,
   WeeklyCheckIn, InsertWeeklyCheckIn,
   HabitLog, InsertHabitLog,
+  UserProfile, InsertUserProfile,
   AppSettings, InsertAppSettings,
 } from "@shared/schema";
 
@@ -66,5 +67,13 @@ export const api = {
     get: () => fetchApi<AppSettings | null>("/api/settings"),
     create: (data: InsertAppSettings) => apiRequest<AppSettings>("/api/settings", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
     update: (id: string, data: Partial<InsertAppSettings>) => apiRequest<AppSettings>(`/api/settings/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+  },
+  
+  profile: {
+    get: () => fetchApi<UserProfile | null>("/api/profile"),
+    create: (data: InsertUserProfile) => apiRequest<UserProfile>("/api/profile", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    update: (id: string, data: Partial<InsertUserProfile>) => apiRequest<UserProfile>(`/api/profile/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    delete: (id: string) => apiRequest<void>(`/api/profile/${id}`, { method: "DELETE" }),
+    verifyPassword: (passwordHash: string) => apiRequest<{ valid: boolean }>("/api/profile/verify-password", { method: "POST", body: JSON.stringify({ passwordHash }), headers: { "Content-Type": "application/json" } }),
   },
 };

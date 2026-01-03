@@ -4,14 +4,16 @@ import type { InsertDayLog } from "@shared/schema";
 
 export function useDayLogs(challengeId: string | undefined) {
   return useQuery({
-    queryKey: ["/api/day-logs", challengeId],
+    queryKey: ["/api/day-logs", { challengeId }],
+    queryFn: () => api.dayLogs.getAll(challengeId!),
     enabled: !!challengeId,
   });
 }
 
 export function useDayLog(date: string) {
   return useQuery({
-    queryKey: ["/api/day-logs", date],
+    queryKey: ["/api/day-logs/date", date],
+    queryFn: () => api.dayLogs.getByDate(date),
   });
 }
 
@@ -20,8 +22,9 @@ export function useCreateDayLog() {
   
   return useMutation({
     mutationFn: (data: InsertDayLog) => api.dayLogs.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/day-logs"] });
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/day-logs"], exact: false });
+      queryClient.invalidateQueries({ queryKey: ["/api/day-logs/date", variables.date] });
     },
   });
 }
@@ -32,7 +35,7 @@ export function useUpdateDayLog() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<InsertDayLog> }) => api.dayLogs.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/day-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/day-logs"], exact: false });
     },
   });
 }

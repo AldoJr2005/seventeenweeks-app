@@ -1,0 +1,165 @@
+Update/extend the existing Expo (React Native) app to add features 1–6 below. Keep the UI Apple-style: minimalist, modern, lots of whitespace, rounded cards, subtle dividers, smooth transitions, light/dark mode. iOS-first.
+
+USE THIS STACK
+- Expo + React Native + TypeScript
+- Expo Router
+- Expo SQLite for local data
+- Expo SecureStore for password/PIN
+- Expo Notifications where needed
+- Expo Image Picker / Camera for photos
+
+IMPORTANT RULE
+The **challenge must start on a Monday** and users must not log anything before it begins (except setup/profile edits). Implement a clean “Pre-Challenge” experience.
+
+========================
+FEATURE 1) MONDAY START LOCK + COUNTDOWN SCREEN
+========================
+Requirement:
+- When a user finishes account creation, compute the challenge start date:
+  - If today is Monday and it’s already past the user’s chosen “start time” (or midnight), start immediately.
+  - Otherwise set start date to the next Monday (00:00 local time) unless the user explicitly chooses a future Monday date.
+- If it is NOT yet the start Monday, the app must show a dedicated locked screen:
+  - Title: “Challenge Starts In”
+  - Countdown timer: days / hours / minutes / seconds
+  - Show start date (e.g., “Starts Monday, Jan 12, 2026”)
+  - Show the user’s plan summary (calorie target, fasting window, workouts/week)
+  - Only allow: “Edit Profile / Plan” and “Log out”
+  - All logging tabs/screens must be disabled/blocked until countdown reaches zero.
+Implementation:
+- Add a “ChallengeStatus” check at app launch and before entering logging routes.
+- If status = PRE_CHALLENGE, route to /pre-challenge and block navigation to other routes.
+
+========================
+FEATURE 2) BASELINE WEEK SNAPSHOT (Week 0)
+========================
+Before Week 1 starts, collect a simple baseline snapshot during onboarding (optional photo):
+- Starting weight (required)
+- Optional baseline photo (optional)
+- Optional baseline habits:
+  - Typical steps/day (rough number or range)
+  - Current workouts/week
+  - Typical daily calories estimate (optional)
+Store as “BaselineSnapshot” linked to the challenge.
+Display on the Pre-Challenge screen as “Your Baseline”.
+
+========================
+FEATURE 3) CALORIE DEFICIT CALCULATOR (SMART + VISUAL)
+========================
+Add an onboarding section: “Build Your Plan”.
+Inputs:
+- Height, current weight (from profile)
+- Age and sex (needed for BMR/TDEE estimate)
+- Activity level selector (Sedentary, Lightly Active, Moderately Active, Very Active)
+- Weekly weight loss goal slider with 3 labeled presets:
+  - Conservative (e.g., 0.5 lb/week)
+  - Moderate (e.g., 1.0 lb/week)
+  - Aggressive (e.g., 1.5–2.0 lb/week)
+- Goal weight (required)
+Outputs (real-time UI):
+- Estimated TDEE
+- Recommended daily calorie target
+- Estimated weekly loss based on deficit
+- “Sustainability indicator” (text only): Sustainable / Challenging / Very aggressive
+- Non-judgmental warning if calorie target is too low (set a safe minimum threshold and recommend adjusting)
+UI:
+- Apple-style segmented controls + slider + clean “Result cards”.
+Data:
+- Save the chosen plan into the Challenge table:
+  - goalWeight
+  - activityLevel
+  - targetCalories
+  - targetWeeklyLoss
+  - deficitLevelLabel (Conservative/Moderate/Aggressive)
+Allow editing later in Settings (changes apply going forward, keep history if easy).
+
+========================
+FEATURE 4) WORKOUT PREFERENCE SETUP (NOT A FULL PROGRAM)
+========================
+Add onboarding questions that shape defaults and reminders:
+- Workouts per week (0–7)
+- Training style:
+  - Gym, Running, Home workouts, Mixed
+- Preferred split:
+  - Push/Pull/Legs
+  - Upper/Lower
+  - Full Body
+  - Cardio-focused
+- Optional: “Do you also run?” yes/no + days/week
+Use this to:
+- Pre-build workout templates
+- Set weekly workout expectation on Home dashboard (“Goal: 4 workouts this week”)
+- Adjust reminder wording (e.g., include running days if selected)
+
+========================
+FEATURE 5) FASTING FEATURE (WINDOWS + SMART RECOMMENDATION)
+========================
+Add fasting setup during onboarding and in Settings:
+- Choose fasting plan:
+  - 16:8
+  - 18:6
+  - 20:4
+(Also accept 14:10 if you want a softer option, but keep UI simple.)
+Ask:
+- “When do you normally eat lunch?” (time picker)
+- “When do you normally finish dinner?” (time picker, optional)
+App behavior:
+- Recommend a fasting start time based on lunch time:
+  - Example: if lunch is 12:00 PM and user chooses 16:8, recommend eating window roughly 12:00–8:00 PM, fasting 8:00 PM–12:00 PM
+- Let user adjust start time manually.
+UI:
+- Show a clean horizontal 24-hour bar with:
+  - Eating window highlighted
+  - Fasting window muted
+- Add daily fasting reminder options (optional): “Fasting starts at X” / “Eating window ends at X”
+Data model:
+- FastingPlan table or fields on Challenge:
+  - fastingType (16_8, 18_6, 20_4)
+  - eatingWindowStartTime
+  - eatingWindowEndTime
+  - fastingStartTime
+  - fastingEndTime
+Integrate into the Home dashboard with a small card: “Fasting: 16:8 • Window 12–8”.
+
+========================
+FEATURE 6) WEEKLY REFLECTION PROMPT (SIMPLE)
+========================
+Once per week (Sunday evening OR Monday morning), prompt the user with a clean card:
+Questions:
+- “What went well this week?”
+- “What was hard?”
+- “One thing to improve next week”
+Keep it lightweight: 3 text fields (or 1 text area with prompts).
+Store as WeeklyReflection linked to weekNumber.
+Show reflections in the Week view and include them in PDF exports.
+
+========================
+APP FLOW CHANGES
+========================
+- Create profile/login (Name, Height, Weight, Password/PIN) as already planned.
+- After profile creation:
+  - Run onboarding: Baseline Snapshot + Plan Builder (calories) + Workout Preferences + Fasting Setup
+  - Determine start Monday
+  - If start date is in the future, route to Pre-Challenge Countdown screen and block all logging.
+- At start time (Monday), automatically unlock the app and send the user to Home.
+
+========================
+DATA MODEL UPDATES (SQLite)
+========================
+Add tables/fields:
+- UserProfile: name, heightValue, heightUnit, startWeight, weightUnit, age, sex
+- Challenge: startDate, goalWeight, activityLevel, targetCalories, targetWeeklyLoss, workoutsPerWeek, trainingStyle, preferredSplit, runningDaysPerWeek, fastingType, eatingStartTime, eatingEndTime
+- BaselineSnapshot: challengeId, baselineWeight, baselinePhotoUri(optional), typicalSteps(optional), workoutsPerWeek(optional), typicalCalories(optional)
+- WeeklyReflection: challengeId, weekNumber, wentWell, wasHard, improveNextWeek, createdAt
+- Add a simple “ChallengeStatus” computed field in logic (PRE_CHALLENGE / ACTIVE / COMPLETE)
+
+========================
+QUALITY REQUIREMENTS
+========================
+- Handle timezone correctly (America/Chicago).
+- Pre-Challenge lock must be enforced at the router/navigation level (not just hidden buttons).
+- Ensure all screens have polished empty/loading states.
+- Keep UI consistent and minimalist.
+- Provide a brief README note explaining how Monday start is calculated.
+
+DELIVERABLE
+- Working implementation of features 1–6 with polished UI and correct gating logic.

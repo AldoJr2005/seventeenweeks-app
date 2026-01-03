@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -11,6 +11,31 @@ import { queryClient } from "@/lib/query-client";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import SetupScreen from "@/screens/SetupScreen";
+import LoginScreen from "@/screens/LoginScreen";
+
+function AppContent() {
+  const { isLoading, needsSetup, isUnlocked, profile } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  if (needsSetup) {
+    return <SetupScreen />;
+  }
+
+  if (profile?.requirePasswordOnOpen && !isUnlocked) {
+    return <LoginScreen />;
+  }
+
+  return <RootStackNavigator />;
+}
 
 export default function App() {
   return (
@@ -20,7 +45,9 @@ export default function App() {
           <GestureHandlerRootView style={styles.root}>
             <KeyboardProvider>
               <NavigationContainer>
-                <RootStackNavigator />
+                <AuthProvider>
+                  <AppContent />
+                </AuthProvider>
               </NavigationContainer>
               <StatusBar style="auto" />
             </KeyboardProvider>
@@ -34,5 +61,10 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

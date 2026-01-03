@@ -354,6 +354,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/profile/change-password", async (req, res) => {
+    try {
+      const { oldPasswordHash, newPasswordHash } = req.body;
+      const profile = await storage.getUserProfile();
+      if (!profile) {
+        return res.status(404).json({ error: "No profile found" });
+      }
+      if (profile.passwordHash !== oldPasswordHash) {
+        return res.status(400).json({ error: "Current password is incorrect" });
+      }
+      if (!newPasswordHash || newPasswordHash.length < 4) {
+        return res.status(400).json({ error: "New password is invalid" });
+      }
+      await storage.updateUserProfile(profile.id, { passwordHash: newPasswordHash });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
