@@ -52,7 +52,7 @@ export default function SetupScreen() {
       return;
     }
     if (password.length < 4) {
-      setError("Password must be at least 4 characters");
+      setError("PIN must be at least 4 digits");
       return;
     }
 
@@ -201,25 +201,29 @@ export default function SetupScreen() {
       case 4:
         return (
           <View style={styles.stepContainer}>
-            <ThemedText style={styles.stepTitle}>Create a password</ThemedText>
+            <ThemedText style={styles.stepTitle}>Create a PIN</ThemedText>
             <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
               You'll need this to unlock the app
             </ThemedText>
             <TextInput
               style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-              placeholder="Password (min 4 characters)"
+              placeholder="PIN (min 4 digits)"
               placeholderTextColor={theme.textSecondary}
               secureTextEntry
+              keyboardType="number-pad"
+              maxLength={6}
               value={password}
-              onChangeText={(t) => { setPassword(t); setError(""); }}
+              onChangeText={(t) => { setPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
             />
             <TextInput
               style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-              placeholder="Confirm password"
+              placeholder="Confirm PIN"
               placeholderTextColor={theme.textSecondary}
               secureTextEntry
+              keyboardType="number-pad"
+              maxLength={6}
               value={confirmPassword}
-              onChangeText={(t) => { setConfirmPassword(t); setError(""); }}
+              onChangeText={(t) => { setConfirmPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
             />
             {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
             <View style={styles.buttonRow}>
