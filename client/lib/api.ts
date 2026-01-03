@@ -1,4 +1,4 @@
-import { getApiUrl, apiRequest } from "@/lib/query-client";
+import { getApiUrl, apiRequest as apiRequestBase } from "@/lib/query-client";
 import type {
   Challenge, InsertChallenge,
   DayLog, InsertDayLog,
@@ -21,59 +21,66 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
+async function apiRequest<T>(method: string, route: string, data?: unknown): Promise<T> {
+  const res = await apiRequestBase(method, route, data);
+  const text = await res.text();
+  if (!text) return undefined as T;
+  return JSON.parse(text) as T;
+}
+
 export const api = {
   challenge: {
     get: () => fetchApi<Challenge | null>("/api/challenge"),
-    create: (data: InsertChallenge) => apiRequest<Challenge>("/api/challenge", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertChallenge>) => apiRequest<Challenge>(`/api/challenge/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertChallenge) => apiRequest<Challenge>("POST", "/api/challenge", data),
+    update: (id: string, data: Partial<InsertChallenge>) => apiRequest<Challenge>("PATCH", `/api/challenge/${id}`, data),
   },
   
   dayLogs: {
     getAll: (challengeId: string) => fetchApi<DayLog[]>(`/api/day-logs?challengeId=${challengeId}`),
     getByDate: (date: string) => fetchApi<DayLog | null>(`/api/day-logs/${date}`),
-    create: (data: InsertDayLog) => apiRequest<DayLog>("/api/day-logs", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertDayLog>) => apiRequest<DayLog>(`/api/day-logs/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertDayLog) => apiRequest<DayLog>("POST", "/api/day-logs", data),
+    update: (id: string, data: Partial<InsertDayLog>) => apiRequest<DayLog>("PATCH", `/api/day-logs/${id}`, data),
   },
   
   workoutLogs: {
     getAll: (challengeId: string) => fetchApi<WorkoutLog[]>(`/api/workout-logs?challengeId=${challengeId}`),
     getByDate: (date: string) => fetchApi<WorkoutLog | null>(`/api/workout-logs/${date}`),
-    create: (data: InsertWorkoutLog) => apiRequest<WorkoutLog>("/api/workout-logs", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertWorkoutLog>) => apiRequest<WorkoutLog>(`/api/workout-logs/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertWorkoutLog) => apiRequest<WorkoutLog>("POST", "/api/workout-logs", data),
+    update: (id: string, data: Partial<InsertWorkoutLog>) => apiRequest<WorkoutLog>("PATCH", `/api/workout-logs/${id}`, data),
   },
   
   weeklyPhotos: {
     getAll: (challengeId: string) => fetchApi<WeeklyPhoto[]>(`/api/weekly-photos?challengeId=${challengeId}`),
     getByWeek: (weekNumber: number) => fetchApi<WeeklyPhoto | null>(`/api/weekly-photos/${weekNumber}`),
-    create: (data: InsertWeeklyPhoto) => apiRequest<WeeklyPhoto>("/api/weekly-photos", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertWeeklyPhoto>) => apiRequest<WeeklyPhoto>(`/api/weekly-photos/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertWeeklyPhoto) => apiRequest<WeeklyPhoto>("POST", "/api/weekly-photos", data),
+    update: (id: string, data: Partial<InsertWeeklyPhoto>) => apiRequest<WeeklyPhoto>("PATCH", `/api/weekly-photos/${id}`, data),
   },
   
   weeklyCheckIns: {
     getAll: (challengeId: string) => fetchApi<WeeklyCheckIn[]>(`/api/weekly-check-ins?challengeId=${challengeId}`),
     getByWeek: (weekNumber: number) => fetchApi<WeeklyCheckIn | null>(`/api/weekly-check-ins/${weekNumber}`),
-    create: (data: InsertWeeklyCheckIn) => apiRequest<WeeklyCheckIn>("/api/weekly-check-ins", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertWeeklyCheckIn>) => apiRequest<WeeklyCheckIn>(`/api/weekly-check-ins/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertWeeklyCheckIn) => apiRequest<WeeklyCheckIn>("POST", "/api/weekly-check-ins", data),
+    update: (id: string, data: Partial<InsertWeeklyCheckIn>) => apiRequest<WeeklyCheckIn>("PATCH", `/api/weekly-check-ins/${id}`, data),
   },
   
   habitLogs: {
     getAll: (challengeId: string) => fetchApi<HabitLog[]>(`/api/habit-logs?challengeId=${challengeId}`),
     getByDate: (date: string) => fetchApi<HabitLog | null>(`/api/habit-logs/${date}`),
-    create: (data: InsertHabitLog) => apiRequest<HabitLog>("/api/habit-logs", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertHabitLog>) => apiRequest<HabitLog>(`/api/habit-logs/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertHabitLog) => apiRequest<HabitLog>("POST", "/api/habit-logs", data),
+    update: (id: string, data: Partial<InsertHabitLog>) => apiRequest<HabitLog>("PATCH", `/api/habit-logs/${id}`, data),
   },
   
   settings: {
     get: () => fetchApi<AppSettings | null>("/api/settings"),
-    create: (data: InsertAppSettings) => apiRequest<AppSettings>("/api/settings", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertAppSettings>) => apiRequest<AppSettings>(`/api/settings/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertAppSettings) => apiRequest<AppSettings>("POST", "/api/settings", data),
+    update: (id: string, data: Partial<InsertAppSettings>) => apiRequest<AppSettings>("PATCH", `/api/settings/${id}`, data),
   },
   
   profile: {
     get: () => fetchApi<UserProfile | null>("/api/profile"),
-    create: (data: InsertUserProfile) => apiRequest<UserProfile>("/api/profile", { method: "POST", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    update: (id: string, data: Partial<InsertUserProfile>) => apiRequest<UserProfile>(`/api/profile/${id}`, { method: "PATCH", body: JSON.stringify(data), headers: { "Content-Type": "application/json" } }),
-    delete: (id: string) => apiRequest<void>(`/api/profile/${id}`, { method: "DELETE" }),
-    verifyPassword: (passwordHash: string) => apiRequest<{ valid: boolean }>("/api/profile/verify-password", { method: "POST", body: JSON.stringify({ passwordHash }), headers: { "Content-Type": "application/json" } }),
+    create: (data: InsertUserProfile) => apiRequest<UserProfile>("POST", "/api/profile", data),
+    update: (id: string, data: Partial<InsertUserProfile>) => apiRequest<UserProfile>("PATCH", `/api/profile/${id}`, data),
+    delete: (id: string) => apiRequest<void>("DELETE", `/api/profile/${id}`),
+    verifyPassword: (passwordHash: string) => apiRequest<{ valid: boolean }>("POST", "/api/profile/verify-password", { passwordHash }),
   },
 };
