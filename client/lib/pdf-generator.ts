@@ -77,7 +77,7 @@ function generateStyles(): string {
       /* Page structure */
       .page {
         page-break-after: always;
-        padding: 20px 0;
+        padding: 12px 0;
         min-height: 100%;
       }
       .page:last-child {
@@ -85,6 +85,71 @@ function generateStyles(): string {
       }
       .avoid-break {
         page-break-inside: avoid;
+      }
+
+      /* Compact week layout - everything on one page */
+      .week-content {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 10px;
+      }
+      .week-left {
+        flex: 0 0 160px;
+      }
+      .week-right {
+        flex: 1;
+      }
+      .compact-photo {
+        background: #F5F5F7;
+        border-radius: 10px;
+        padding: 8px;
+        text-align: center;
+      }
+      .compact-photo img {
+        width: 100%;
+        max-height: 200px;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+      .compact-photo-placeholder {
+        padding: 30px 10px;
+        color: #86868B;
+        font-size: 10px;
+        text-align: center;
+      }
+      .compact-photo-icon {
+        font-size: 24px;
+        margin-bottom: 6px;
+        opacity: 0.5;
+      }
+      .compact-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .compact-stat {
+        background: #F5F5F7;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+      }
+      .compact-stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #007AFF;
+        line-height: 1.1;
+      }
+      .compact-stat-value.success { color: #34C759; }
+      .compact-stat-label {
+        font-size: 9px;
+        color: #86868B;
+        font-weight: 500;
+        margin-top: 2px;
+      }
+      .compact-stat-sub {
+        font-size: 8px;
+        color: #AEAEB2;
+        margin-top: 2px;
       }
 
       /* Cover page */
@@ -154,27 +219,27 @@ function generateStyles(): string {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-bottom: 16px;
-        margin-bottom: 20px;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
         border-bottom: 2px solid #007AFF;
       }
       .page-header h2 {
-        font-size: 22px;
+        font-size: 18px;
         font-weight: 700;
         color: #1D1D1F;
         letter-spacing: -0.3px;
       }
       .page-header .dates {
-        font-size: 13px;
+        font-size: 11px;
         color: #86868B;
       }
       .section-title {
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
         color: #86868B;
         text-transform: uppercase;
         letter-spacing: 0.8px;
-        margin: 20px 0 12px 0;
+        margin: 8px 0 6px 0;
       }
 
       /* Cards */
@@ -268,42 +333,42 @@ function generateStyles(): string {
         opacity: 0.5;
       }
 
-      /* Tables */
+      /* Tables - Compact */
       .daily-table {
         width: 100%;
         border-collapse: collapse;
         background: #F5F5F7;
-        border-radius: 12px;
+        border-radius: 8px;
         overflow: hidden;
-        font-size: 10px;
+        font-size: 9px;
       }
       .daily-table th {
         background: #E5E5EA;
-        font-size: 9px;
+        font-size: 8px;
         font-weight: 600;
         color: #86868B;
         text-transform: uppercase;
         letter-spacing: 0.3px;
-        padding: 10px 6px;
+        padding: 6px 4px;
         text-align: left;
         white-space: nowrap;
       }
       .daily-table td {
-        padding: 10px 6px;
+        padding: 5px 4px;
         border-bottom: 1px solid #E5E5EA;
         vertical-align: middle;
         word-wrap: break-word;
-        max-width: 100px;
+        max-width: 80px;
       }
       .daily-table tr:last-child td {
         border-bottom: none;
       }
-      .daily-table .day-col { width: 70px; }
-      .daily-table .cal-col { width: 50px; text-align: right; }
-      .daily-table .macro-col { width: 75px; text-align: center; }
-      .daily-table .steps-col { width: 55px; text-align: right; }
-      .daily-table .water-col { width: 40px; text-align: center; }
-      .daily-table .sleep-col { width: 40px; text-align: right; }
+      .daily-table .day-col { width: 65px; }
+      .daily-table .cal-col { width: 40px; text-align: right; }
+      .daily-table .macro-col { width: 65px; text-align: center; }
+      .daily-table .steps-col { width: 45px; text-align: right; }
+      .daily-table .water-col { width: 30px; text-align: center; }
+      .daily-table .sleep-col { width: 30px; text-align: right; }
       .daily-table .workout-col { width: auto; }
 
       .check { color: #34C759; font-weight: 600; }
@@ -513,25 +578,22 @@ function generateDailyTable(week: WeekData): string {
   }).join("");
 
   return `
-    <div class="avoid-break">
-      <div class="section-title">Daily Details</div>
-      <table class="daily-table">
-        <thead>
-          <tr>
-            <th class="day-col">Day</th>
-            <th class="cal-col">Cal</th>
-            <th class="macro-col">P/C/F</th>
-            <th class="steps-col">Steps</th>
-            <th class="water-col">H₂O</th>
-            <th class="sleep-col">Sleep</th>
-            <th class="workout-col">Workout</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-    </div>
+    <table class="daily-table">
+      <thead>
+        <tr>
+          <th class="day-col">Day</th>
+          <th class="cal-col">Cal</th>
+          <th class="macro-col">P/C/F</th>
+          <th class="steps-col">Steps</th>
+          <th class="water-col">H₂O</th>
+          <th class="sleep-col">Sleep</th>
+          <th class="workout-col">Workout</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
   `;
 }
 
@@ -582,6 +644,79 @@ function generateEmptyWeekSection(week: WeekData): string {
   `;
 }
 
+function generateCompactPhotoSection(week: WeekData, base64Image: string | null, hasPhotoRecord: boolean): string {
+  if (base64Image) {
+    return `
+      <div class="compact-photo">
+        <img src="${base64Image}" alt="Week ${week.weekNumber}" />
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="compact-photo">
+      <div class="compact-photo-placeholder">
+        <div class="compact-photo-icon">📷</div>
+        ${hasPhotoRecord ? "Unavailable" : "No photo"}
+      </div>
+    </div>
+  `;
+}
+
+function generateCompactOverview(week: WeekData, challenge: Challenge): string {
+  const logsWithCalories = week.dayLogs.filter(d => d.calories && d.calories > 0);
+  const avgCalories = logsWithCalories.length > 0 
+    ? Math.round(logsWithCalories.reduce((sum, d) => sum + (d.calories || 0), 0) / logsWithCalories.length)
+    : null;
+  
+  const logsWithProtein = week.dayLogs.filter(d => d.protein);
+  const avgProtein = logsWithProtein.length > 0
+    ? Math.round(logsWithProtein.reduce((sum, d) => sum + (d.protein || 0), 0) / logsWithProtein.length)
+    : 0;
+  const logsWithCarbs = week.dayLogs.filter(d => d.carbs);
+  const avgCarbs = logsWithCarbs.length > 0
+    ? Math.round(logsWithCarbs.reduce((sum, d) => sum + (d.carbs || 0), 0) / logsWithCarbs.length)
+    : 0;
+  const logsWithFat = week.dayLogs.filter(d => d.fat);
+  const avgFat = logsWithFat.length > 0
+    ? Math.round(logsWithFat.reduce((sum, d) => sum + (d.fat || 0), 0) / logsWithFat.length)
+    : 0;
+
+  const workoutsCompleted = week.workoutLogs.filter(w => w.type !== "Rest").length;
+  const waterDays = week.habitLogs.filter(h => h.waterDone).length;
+  
+  const currentWeight = week.checkIn?.weight;
+  const startWeight = challenge.startWeight;
+  const totalChange = currentWeight ? currentWeight - startWeight : null;
+
+  const macroText = avgProtein || avgCarbs || avgFat 
+    ? `P${avgProtein}/C${avgCarbs}/F${avgFat}` 
+    : "—";
+
+  return `
+    <div class="compact-stats">
+      <div class="compact-stat">
+        <div class="compact-stat-value">${avgCalories !== null ? avgCalories.toLocaleString() : "—"}</div>
+        <div class="compact-stat-label">Avg Calories</div>
+        <div class="compact-stat-sub">${macroText}</div>
+      </div>
+      <div class="compact-stat">
+        <div class="compact-stat-value">${workoutsCompleted}</div>
+        <div class="compact-stat-label">Workouts</div>
+      </div>
+      <div class="compact-stat">
+        <div class="compact-stat-value">${waterDays}/7</div>
+        <div class="compact-stat-label">Water Days</div>
+      </div>
+      <div class="compact-stat">
+        <div class="compact-stat-value ${totalChange !== null && totalChange < 0 ? "success" : ""}">${currentWeight !== null && currentWeight !== undefined ? currentWeight : "—"}</div>
+        <div class="compact-stat-label">Weight</div>
+        <div class="compact-stat-sub">${totalChange !== null ? `${totalChange >= 0 ? "+" : ""}${totalChange.toFixed(1)}` : ""}</div>
+      </div>
+    </div>
+  `;
+}
+
 async function generateWeekPage(week: WeekData, challenge: Challenge): Promise<string> {
   if (!hasWeekData(week)) {
     return generateEmptyWeekSection(week);
@@ -597,8 +732,15 @@ async function generateWeekPage(week: WeekData, challenge: Challenge): Promise<s
         <h2>Week ${week.weekNumber} of 17</h2>
         <div class="dates">${formatDate(week.startDate)} – ${formatDate(week.endDate)}</div>
       </div>
-      ${generateWeekOverview(week, challenge)}
-      ${generatePhotoSection(week, base64Image, !!week.photo?.imageUri)}
+      <div class="week-content">
+        <div class="week-left">
+          ${generateCompactPhotoSection(week, base64Image, !!week.photo?.imageUri)}
+        </div>
+        <div class="week-right">
+          ${generateCompactOverview(week, challenge)}
+        </div>
+      </div>
+      <div class="section-title">Daily Log</div>
       ${generateDailyTable(week)}
     </div>
   `;
