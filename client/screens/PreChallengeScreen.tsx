@@ -161,6 +161,7 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
     <KeyboardAwareScrollViewCompat 
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl }]}
+      showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
         <ThemedText style={styles.title}>Challenge Starts In</ThemedText>
@@ -271,60 +272,112 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
       </Card>
 
       <Card style={styles.planCard}>
-        <ThemedText style={styles.cardTitle}>Your Plan</ThemedText>
-        <View style={styles.planRow}>
-          <View style={styles.planItem}>
-            <Feather name="target" size={20} color={theme.primary} />
-            <View>
-              <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Goal Weight</ThemedText>
-              <ThemedText style={styles.planValue}>
-                {challenge.goalWeight ? `${challenge.goalWeight} ${challenge.unit}` : "Not set"}
-              </ThemedText>
-            </View>
-          </View>
-          <View style={styles.planItem}>
-            <Feather name="zap" size={20} color={theme.primary} />
-            <View>
-              <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Daily Calories</ThemedText>
-              <ThemedText style={styles.planValue}>
-                {challenge.targetCalories ? `${challenge.targetCalories} kcal` : "Not set"}
-              </ThemedText>
-            </View>
-          </View>
+        <View style={styles.planHeader}>
+          <ThemedText style={styles.cardTitle}>Your Plan</ThemedText>
+          <ThemedText style={[styles.planReadyLabel, { color: theme.success }]}>
+            Plan ready - begins Monday
+          </ThemedText>
         </View>
-        <View style={styles.planRow}>
-          <View style={styles.planItem}>
-            <Feather name="activity" size={20} color={theme.primary} />
-            <View>
-              <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Workouts/Week</ThemedText>
-              <ThemedText style={styles.planValue}>
-                {challenge.workoutsPerWeek ?? 4}
-              </ThemedText>
-            </View>
-          </View>
-          <View style={styles.planItem}>
-            <Feather name="clock" size={20} color={theme.primary} />
-            <View>
-              <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Fasting</ThemedText>
-              <ThemedText style={styles.planValue}>
-                {challenge.fastingType ? challenge.fastingType.replace("_", ":") : "Not set"}
-              </ThemedText>
-            </View>
-          </View>
-        </View>
-        {challenge.targetProteinGrams ? (
+
+        <View style={styles.planSection}>
+          <ThemedText style={[styles.planSectionTitle, { color: theme.textSecondary }]}>Goals</ThemedText>
           <View style={styles.planRow}>
-            <View style={[styles.planItem, { flex: 1 }]}>
-              <Feather name="pie-chart" size={20} color={theme.primary} />
+            <View style={styles.planItem}>
+              <Feather name="target" size={18} color={theme.primary} />
               <View>
-                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Daily Macros</ThemedText>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Goal Weight</ThemedText>
                 <ThemedText style={styles.planValue}>
-                  P:{challenge.targetProteinGrams}g C:{challenge.targetCarbsGrams}g F:{challenge.targetFatGrams}g
+                  {challenge.goalWeight ? `${challenge.goalWeight} ${challenge.unit}` : "Not set"}
+                </ThemedText>
+              </View>
+            </View>
+            <View style={styles.planItem}>
+              <Feather name="trending-down" size={18} color={theme.primary} />
+              <View>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Weekly Loss</ThemedText>
+                <ThemedText style={styles.planValue}>
+                  {challenge.targetWeeklyLoss ? `${challenge.targetWeeklyLoss} lb/wk` : "1 lb/wk"}
                 </ThemedText>
               </View>
             </View>
           </View>
-        ) : null}
+        </View>
+
+        <View style={styles.planSection}>
+          <ThemedText style={[styles.planSectionTitle, { color: theme.textSecondary }]}>Nutrition</ThemedText>
+          <View style={styles.planRow}>
+            <View style={styles.planItem}>
+              <Feather name="zap" size={18} color={theme.primary} />
+              <View>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Daily Calories</ThemedText>
+                <ThemedText style={styles.planValue}>
+                  {challenge.targetCalories ? `${challenge.targetCalories} kcal` : "Not set"}
+                </ThemedText>
+              </View>
+            </View>
+            <View style={styles.planItem}>
+              <Feather name="pie-chart" size={18} color={theme.primary} />
+              <View>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Macros</ThemedText>
+                <ThemedText style={styles.planValue}>
+                  {challenge.targetProteinGrams ? `P:${challenge.targetProteinGrams} C:${challenge.targetCarbsGrams} F:${challenge.targetFatGrams}` : "Balanced"}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+          {challenge.fastingType ? (
+            <View style={[styles.planRow, { marginTop: Spacing.sm }]}>
+              <View style={styles.planItem}>
+                <Feather name="clock" size={18} color={theme.primary} />
+                <View>
+                  <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Fasting</ThemedText>
+                  <ThemedText style={styles.planValue}>
+                    {challenge.fastingType.replace("_", ":")} ({challenge.eatingStartTime} - {challenge.eatingEndTime})
+                  </ThemedText>
+                </View>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.planSection}>
+          <ThemedText style={[styles.planSectionTitle, { color: theme.textSecondary }]}>Activity</ThemedText>
+          <View style={styles.planRow}>
+            <View style={styles.planItem}>
+              <Feather name="activity" size={18} color={theme.primary} />
+              <View>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Workouts</ThemedText>
+                <ThemedText style={styles.planValue}>
+                  {challenge.workoutsPerWeek ?? 4}x/week ({challenge.preferredSplit || "PPL"})
+                </ThemedText>
+              </View>
+            </View>
+            <View style={styles.planItem}>
+              <Feather name="navigation" size={18} color={theme.primary} />
+              <View>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Step Goal</ThemedText>
+                <ThemedText style={styles.planValue}>
+                  {(challenge.stepGoal ?? 10000).toLocaleString()}/day
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.planSection}>
+          <ThemedText style={[styles.planSectionTitle, { color: theme.textSecondary }]}>Reminders</ThemedText>
+          <View style={styles.planRow}>
+            <View style={styles.planItem}>
+              <Feather name="bell" size={18} color={theme.primary} />
+              <View>
+                <ThemedText style={[styles.planLabel, { color: theme.textSecondary }]}>Intensity</ThemedText>
+                <ThemedText style={styles.planValue}>
+                  {challenge.reminderIntensity || "Normal"}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        </View>
       </Card>
 
       <View style={styles.actions}>
@@ -340,7 +393,7 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
       </View>
 
       <ThemedText style={[styles.helpText, { color: theme.textSecondary }]}>
-        You can only log data once your challenge begins. Check back on Monday!
+        You can only log data once your challenge begins. Use this time to prepare!
       </ThemedText>
     </KeyboardAwareScrollViewCompat>
   );
@@ -410,18 +463,35 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.xl,
   },
+  planHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
   cardTitle: {
     ...Typography.headline,
+  },
+  planReadyLabel: {
+    ...Typography.caption,
+    fontWeight: "600",
+  },
+  planSection: {
     marginBottom: Spacing.lg,
+  },
+  planSectionTitle: {
+    ...Typography.caption,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    marginBottom: Spacing.sm,
   },
   planRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: Spacing.md,
   },
   planItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: Spacing.sm,
     flex: 1,
   },

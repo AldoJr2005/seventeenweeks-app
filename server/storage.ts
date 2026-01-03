@@ -82,7 +82,7 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Challenge
   async getChallenge(): Promise<Challenge | undefined> {
-    const [challenge] = await db.select().from(challenges).limit(1);
+    const [challenge] = await db.select().from(challenges).orderBy(desc(challenges.createdAt)).limit(1);
     return challenge || undefined;
   }
 

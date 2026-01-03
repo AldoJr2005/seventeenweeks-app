@@ -1,0 +1,102 @@
+I went through the full setup flow and the app is close, but there are **UI bugs and logic issues that must be fixed**, plus **missing data usage**. Please address ALL items below.
+
+========================
+1) FIX CONTINUE / NEXT BUTTON ISSUES
+========================
+- Some “Continue” buttons in the onboarding/setup flow do not advance correctly or require multiple taps.
+- Review ALL onboarding steps and ensure:
+  • Continue/Next buttons always work on first tap
+  • Disabled/enabled states are correct
+  • Required fields are validated before allowing continue
+- Make sure keyboard focus or layout issues are not blocking taps (especially on iPhone).
+
+========================
+2) COUNTDOWN DASHBOARD IS USING WRONG DATA
+========================
+The countdown dashboard is currently showing incorrect values.
+
+FIX THE FOLLOWING:
+- It shows **goal weight = 165 lbs**, but my selected goal weight is **180 lbs**
+- It says the challenge starts on **Tuesday**, but the challenge must ALWAYS start on **Monday**
+
+REQUIREMENTS:
+- The countdown dashboard must pull REAL values from onboarding setup, not defaults.
+- Correctly calculate challenge start date:
+  • Challenge start date = NEXT Monday at 00:00 local time
+  • Never Tuesday
+- Display on countdown dashboard:
+  • Goal weight (from setup)
+  • Target calories
+  • Weekly weight loss pace (Conservative / Moderate / Aggressive)
+  • Workouts per week + split
+  • Fasting type + eating window
+  • Step goal
+  • Reminder intensity
+- Add a small label: “Plan ready – begins Monday”
+
+========================
+3) COUNTDOWN DASHBOARD = PLAN SUMMARY
+========================
+The countdown screen should act as a **read-only Plan Summary** until Monday.
+
+Add:
+- Clean Apple-style summary cards showing:
+  • Calories/day
+  • Macro targets (Protein / Carbs / Fat)
+  • Workout frequency & split
+  • Fasting window
+  • Step goal
+- No logging allowed
+- Only actions allowed:
+  • Edit Plan
+  • Edit Profile
+  • Log out
+
+========================
+4) ADD FULL PLAN EDITING IN SETTINGS
+========================
+Currently, once setup is done, the user cannot easily change their plan.
+
+ADD SETTINGS SECTIONS:
+- Edit Calories & Deficit
+  • Change weekly loss pace
+  • Recalculate calorie target
+- Edit Macros
+  • Adjust protein/fat (carbs auto-adjust)
+- Edit Workout Plan
+  • Workouts per week
+  • Split
+  • Running days
+- Edit Fasting Plan
+  • Fasting type (16:8 / 18:6 / 20:4)
+  • Eating window times
+- Edit Step Goal
+- Edit Reminder Intensity
+
+RULES:
+- Changes should apply going forward (do not delete past logs)
+- Recalculate dependent values automatically (e.g., macros if calories change)
+- Re-schedule notifications after any change
+
+========================
+5) DATA CONSISTENCY FIX
+========================
+Ensure:
+- All onboarding data is saved once and reused everywhere
+- No hardcoded defaults override user input
+- Countdown dashboard, Home, Settings, and PDF exports all reference the SAME stored plan data
+
+========================
+6) FINAL CHECK
+========================
+After fixes:
+- Complete onboarding
+- Verify countdown dashboard shows correct data
+- Verify Monday start logic
+- Verify settings edits persist and reflect immediately
+
+DELIVERABLE:
+- Fixed onboarding navigation
+- Correct countdown dashboard data
+- Editable plan in Settings
+- Clean Apple-style UI consistency
