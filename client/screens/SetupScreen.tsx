@@ -472,14 +472,16 @@ export default function SetupScreen() {
               />
             </View>
 
-            <Pressable style={styles.loginLink} onPress={() => refreshAuth()}>
-              <ThemedText style={[styles.loginLinkText, { color: theme.textSecondary }]}>
-                Already have an account?{" "}
-              </ThemedText>
-              <ThemedText style={[styles.loginLinkText, { color: theme.primary }]}>
-                Login
-              </ThemedText>
-            </Pressable>
+            {profile ? (
+              <Pressable style={styles.loginLink} onPress={() => refreshAuth()}>
+                <ThemedText style={[styles.loginLinkText, { color: theme.textSecondary }]}>
+                  Already have an account?{" "}
+                </ThemedText>
+                <ThemedText style={[styles.loginLinkText, { color: theme.primary }]}>
+                  Login
+                </ThemedText>
+              </Pressable>
+            ) : null}
           </View>
         );
 
@@ -918,17 +920,15 @@ export default function SetupScreen() {
 
       {renderStep()}
 
-      <View style={styles.buttonRow}>
+      <View style={[styles.buttonRow, step === 1 ? styles.buttonRowCentered : null]}>
         {step > 1 ? (
           <Pressable style={styles.backButton} onPress={() => setStep(step - 1)}>
             <Feather name="chevron-left" size={20} color={theme.primary} />
             <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
           </Pressable>
-        ) : (
-          <View style={styles.backButton} />
-        )}
+        ) : null}
         {step < TOTAL_STEPS ? (
-          <Button onPress={() => setStep(step + 1)} disabled={!canContinue()} style={styles.nextButton}>
+          <Button onPress={() => setStep(step + 1)} disabled={!canContinue()} style={step === 1 ? styles.fullWidthButton : styles.nextButton}>
             Continue
           </Button>
         ) : (
@@ -1221,5 +1221,11 @@ const styles = StyleSheet.create({
   },
   loginLinkText: {
     ...Typography.body,
+  },
+  buttonRowCentered: {
+    justifyContent: "center",
+  },
+  fullWidthButton: {
+    width: "100%",
   },
 });
