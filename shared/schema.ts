@@ -156,6 +156,11 @@ export const weeklyReflections = pgTable("weekly_reflections", {
   wentWell: text("went_well"),
   wasHard: text("was_hard"),
   improveNextWeek: text("improve_next_week"),
+  learned: text("learned"),
+  nextWeekFocus: text("next_week_focus"),
+  moodRating: integer("mood_rating"),
+  energyRating: integer("energy_rating"),
+  overallRating: integer("overall_rating"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

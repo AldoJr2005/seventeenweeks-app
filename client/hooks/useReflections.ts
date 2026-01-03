@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
-import type { InsertWeeklyReflection } from "@shared/schema";
+import type { InsertWeeklyReflection, WeeklyReflection } from "@shared/schema";
 
 export function useWeeklyReflections(challengeId: string | undefined) {
-  return useQuery({
+  return useQuery<WeeklyReflection[]>({
     queryKey: ["/api/reflections", challengeId],
     enabled: !!challengeId,
     queryFn: async () => {
@@ -17,7 +17,7 @@ export function useWeeklyReflections(challengeId: string | undefined) {
 }
 
 export function useWeeklyReflection(challengeId: string | undefined, weekNumber: number) {
-  return useQuery({
+  return useQuery<WeeklyReflection | null>({
     queryKey: ["/api/reflections", challengeId, weekNumber],
     enabled: !!challengeId,
     queryFn: async () => {

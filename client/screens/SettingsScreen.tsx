@@ -281,6 +281,24 @@ export default function SettingsScreen() {
           <Feather name="chevron-right" size={20} color={theme.textSecondary} />
         </Pressable>
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Pressable
+          style={styles.settingsRow}
+          onPress={() => navigation.navigate("WorkoutPreferences")}
+        >
+          <View style={styles.settingsRowLeft}>
+            <Feather name="zap" size={20} color={theme.textSecondary} />
+            <View>
+              <ThemedText style={styles.settingsLabel}>Workout Preferences</ThemedText>
+              <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
+                {(challenge as Challenge | undefined)?.workoutsPerWeek 
+                  ? `${(challenge as Challenge).workoutsPerWeek} days/week`
+                  : "Set up your training"}
+              </ThemedText>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <SettingsRow
           icon="navigation"
           label="Daily Step Goal"
@@ -294,6 +312,24 @@ export default function SettingsScreen() {
           value={`${(challenge as Challenge | undefined)?.sleepGoal || 8} hours`}
           theme={theme}
         />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <Pressable
+          style={styles.settingsRow}
+          onPress={() => navigation.navigate("FastingSettings")}
+        >
+          <View style={styles.settingsRowLeft}>
+            <Feather name="clock" size={20} color={theme.textSecondary} />
+            <View>
+              <ThemedText style={styles.settingsLabel}>Fasting Schedule</ThemedText>
+              <ThemedText style={[styles.settingsHint, { color: theme.textSecondary }]}>
+                {(challenge as Challenge | undefined)?.fastingType && (challenge as Challenge).fastingType !== "none"
+                  ? `${(challenge as Challenge).fastingType} intermittent fasting`
+                  : "Not enabled"}
+              </ThemedText>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
       </Card>
 
       <ThemedText style={styles.sectionHeader}>Data</ThemedText>

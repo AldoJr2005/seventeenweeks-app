@@ -3,12 +3,14 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProgressScreen from "@/screens/ProgressScreen";
 import PhotosScreen from "@/screens/PhotosScreen";
 import PhotoCompareScreen from "@/screens/PhotoCompareScreen";
+import WeeklyReflectionScreen from "@/screens/progress/WeeklyReflectionScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type ProgressStackParamList = {
   Progress: undefined;
   Photos: undefined;
   PhotoCompare: { week1?: number; week2?: number };
+  WeeklyReflection: { weekNumber: number };
 };
 
 const Stack = createNativeStackNavigator<ProgressStackParamList>();
@@ -35,6 +37,11 @@ export default function ProgressStackNavigator() {
           headerTitle: "Compare",
           presentation: "modal"
         }}
+      />
+      <Stack.Screen
+        name="WeeklyReflection"
+        component={WeeklyReflectionScreen}
+        options={{ headerTitle: "Weekly Reflection" }}
       />
     </Stack.Navigator>
   );

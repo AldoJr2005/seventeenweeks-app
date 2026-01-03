@@ -4,6 +4,8 @@ import SettingsScreen from "@/screens/SettingsScreen";
 import RemindersScreen from "@/screens/RemindersScreen";
 import ExportScreen from "@/screens/ExportScreen";
 import TDEECalculatorScreen from "@/screens/settings/TDEECalculatorScreen";
+import WorkoutPreferencesScreen from "@/screens/settings/WorkoutPreferencesScreen";
+import FastingSettingsScreen from "@/screens/settings/FastingSettingsScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type SettingsStackParamList = {
@@ -11,6 +13,8 @@ export type SettingsStackParamList = {
   Reminders: undefined;
   Export: undefined;
   TDEECalculator: undefined;
+  WorkoutPreferences: undefined;
+  FastingSettings: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -39,6 +43,16 @@ export default function SettingsStackNavigator() {
         name="TDEECalculator"
         component={TDEECalculatorScreen}
         options={{ headerTitle: "Calorie Calculator" }}
+      />
+      <Stack.Screen
+        name="WorkoutPreferences"
+        component={WorkoutPreferencesScreen}
+        options={{ headerTitle: "Workout Preferences" }}
+      />
+      <Stack.Screen
+        name="FastingSettings"
+        component={FastingSettingsScreen}
+        options={{ headerTitle: "Fasting Schedule" }}
       />
     </Stack.Navigator>
   );
