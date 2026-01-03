@@ -1,0 +1,74 @@
+Redesign the Nutrition / Calories experience to match a modern iOS dark UI (like the rest of the app) and behave similar to MyFitnessPal. Fix the barcode scanner accuracy issues, fix UI being cut off, and enable horizontal swiping on the calories/macros dashboard.
+
+1) Nutrition Home (Dashboard) — swipeable cards
+	•	On the Nutrition main screen, create a horizontal swipeable card carousel (paging).
+	•	Cards (pages) in order:
+	1.	Calories (Remaining = Goal − Food + Exercise)
+	2.	Macros (Net Carbs / Fat / Protein rings or progress)
+	3.	Heart Healthy (Fat / Sodium / Cholesterol progress bars)
+	4.	Low Carb (Net Carbs / Sugar / Fiber progress bars)
+	•	Use a paging TabView / pager style with page dots (like iOS). It must respond to swipe left/right smoothly.
+	•	The cards must be fully visible with correct padding and safe-area handling (no cut off at top/bottom, no overlap with tab bar).
+
+2) Add Food flow (Manual + Barcode)
+
+Add a prominent button: “Log Food” and another: “Scan Barcode”.
+
+Manual Entry
+	•	User can add a food manually with:
+	•	Food name
+	•	Calories
+	•	Protein (g), Carbs (g), Fat (g)
+	•	Optional: Fiber, Sugar, Sodium, Cholesterol
+	•	Serving size (text + numeric, e.g., “0.25 cup (30g)”)
+	•	Number of servings (stepper +/-)
+	•	Time
+	•	Meal selection: Breakfast / Lunch / Dinner / Snack
+	•	After saving, it updates dashboard totals immediately.
+
+Barcode Scan (must be accurate + confirmable)
+	•	Use device camera to scan UPC/EAN.
+	•	After scanning, do this logic:
+	1.	Lookup barcode in a nutrition database (ex: OpenFoodFacts or similar).
+	2.	If multiple matches / low confidence, show a pick the best match screen.
+	3.	Show a detail page that looks like MyFitnessPal:
+	•	Food name + brand
+	•	Serving size selector
+	•	Number of servings
+	•	Meal selection
+	•	Macro breakdown + calories for the selected serving
+	•	Nutrition facts expandable section
+	•	Critical Fix: The app currently shows a wildly wrong calorie count (ex: 533 cal vs correct 160 cal).
+This usually happens because the API returns values per 100g or per serving, and we’re not converting correctly.
+	•	Implement correct conversion rules:
+	•	If API values are per 100g, compute per serving using serving grams.
+	•	If serving size is provided (like 30g), calculate: perServing = per100g * (servingGrams/100)
+	•	Then multiply by number of servings.
+	•	Always display what the numbers are based on (“per 0.25 cup (30g)”).
+	•	Add a “Something wrong?” option:
+	•	Let user override calories/macros and save a corrected custom entry tied to that barcode locally (so next scan uses the corrected version).
+
+3) Bottom sheet / overlay UI must not be cut off
+	•	The current scanner result UI is cut off. Fix layout:
+	•	Respect safe area insets
+	•	Ensure bottom sheet height fits content and scrolls if needed
+	•	Buttons must always be visible (ex: “Add to Snacks”, “Scan Again”)
+	•	No content should hide behind the tab bar
+
+4) Data Model updates
+	•	Store food logs with fields:
+	•	date, time
+	•	mealType (breakfast/lunch/dinner/snack)
+	•	calories, protein, carbs, fat, fiber, sugar, sodium, cholesterol
+	•	servingsCount, servingSizeLabel, servingGrams (optional)
+	•	barcode (optional), source (manual / barcode / custom)
+	•	Dashboard totals are computed per day and roll up weekly totals for the weekly PDF.
+
+5) Acceptance tests (must pass)
+	•	I can swipe calories ⇄ macros ⇄ heart healthy ⇄ low carb on the Nutrition dashboard.
+	•	Barcode scan for a common product returns reasonable calories/macros; serving conversions are correct.
+	•	Scanner result screen is never cut off on iPhone; buttons always visible.
+	•	I can choose meal type and servings before saving.
+	•	Saved logs immediately update the rings/bars on the dashboard.
+
+Do not remove existing dark UI style. Match the app’s look: rounded cards, subtle shadows, blue accent, clean typography.

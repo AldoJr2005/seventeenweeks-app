@@ -25,8 +25,23 @@ interface ProductData {
   protein: number;
   carbs: number;
   fat: number;
-  servingSize?: string;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  cholesterol: number;
+  servingLabel: string;
+  servingGrams: number | null;
   barcode: string;
+  per100g: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    fiber: number;
+    sugar: number;
+    sodium: number;
+    cholesterol: number;
+  };
 }
 
 export default function BarcodeScanScreen() {
@@ -46,6 +61,15 @@ export default function BarcodeScanScreen() {
   const { data: challenge } = useChallenge();
   const createFoodEntry = useCreateFoodEntry();
 
+  const parseServingGrams = (servingSize: string | undefined): number | null => {
+    if (!servingSize) return null;
+    const match = servingSize.match(/(\d+(?:\.\d+)?)\s*g/i);
+    if (match) return parseFloat(match[1]);
+    const mlMatch = servingSize.match(/(\d+(?:\.\d+)?)\s*ml/i);
+    if (mlMatch) return parseFloat(mlMatch[1]);
+    return null;
+  };
+
   const lookupBarcode = async (barcode: string) => {
     setLoading(true);
     setError(null);
@@ -59,15 +83,40 @@ export default function BarcodeScanScreen() {
         const product = data.product;
         const nutriments = product.nutriments || {};
         
+        const per100g = {
+          calories: nutriments["energy-kcal_100g"] || nutriments["energy-kcal_value"] || 0,
+          protein: nutriments.proteins_100g || 0,
+          carbs: nutriments.carbohydrates_100g || 0,
+          fat: nutriments.fat_100g || 0,
+          fiber: nutriments.fiber_100g || 0,
+          sugar: nutriments.sugars_100g || 0,
+          sodium: nutriments.sodium_100g ? nutriments.sodium_100g * 1000 : 0,
+          cholesterol: nutriments["cholesterol_100g"] || 0,
+        };
+
+        const servingLabel = product.serving_size || "100g";
+        const servingGrams = parseServingGrams(servingLabel) || 100;
+        const multiplier = servingGrams / 100;
+
+        const perServing = {
+          calories: Math.round(per100g.calories * multiplier),
+          protein: Math.round(per100g.protein * multiplier * 10) / 10,
+          carbs: Math.round(per100g.carbs * multiplier * 10) / 10,
+          fat: Math.round(per100g.fat * multiplier * 10) / 10,
+          fiber: Math.round(per100g.fiber * multiplier * 10) / 10,
+          sugar: Math.round(per100g.sugar * multiplier * 10) / 10,
+          sodium: Math.round(per100g.sodium * multiplier),
+          cholesterol: Math.round(per100g.cholesterol * multiplier * 10) / 10,
+        };
+        
         setProductData({
           name: product.product_name || "Unknown Product",
           brand: product.brands || undefined,
-          calories: Math.round(nutriments["energy-kcal_100g"] || nutriments["energy-kcal"] || 0),
-          protein: Math.round((nutriments.proteins_100g || nutriments.proteins || 0) * 10) / 10,
-          carbs: Math.round((nutriments.carbohydrates_100g || nutriments.carbohydrates || 0) * 10) / 10,
-          fat: Math.round((nutriments.fat_100g || nutriments.fat || 0) * 10) / 10,
-          servingSize: product.serving_size || "100g",
+          ...perServing,
+          servingLabel,
+          servingGrams: servingGrams !== 100 ? servingGrams : null,
           barcode,
+          per100g,
         });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
@@ -104,8 +153,14 @@ export default function BarcodeScanScreen() {
         proteinPerServing: productData.protein,
         carbsPerServing: productData.carbs,
         fatPerServing: productData.fat,
-        servingLabel: productData.servingSize || null,
+        fiberPerServing: productData.fiber,
+        sugarPerServing: productData.sugar,
+        sodiumPerServing: productData.sodium,
+        cholesterolPerServing: productData.cholesterol,
+        servingLabel: productData.servingLabel || null,
+        servingGrams: productData.servingGrams,
         servingsCount,
+        source: "barcode",
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       (navigation as any).navigate("NutritionLog", { date });
@@ -242,7 +297,7 @@ export default function BarcodeScanScreen() {
             </View>
 
             <ThemedText style={[styles.servingInfo, { color: theme.textSecondary }]}>
-              Per {productData.servingSize}
+              Per {productData.servingLabel}
             </ThemedText>
 
             <View style={styles.servingsRow}>

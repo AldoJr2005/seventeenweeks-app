@@ -202,6 +202,7 @@ export const foodEntries = pgTable("food_entries", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   challengeId: varchar("challenge_id").references(() => challenges.id),
   date: date("date").notNull(),
+  time: varchar("time", { length: 10 }),
   mealType: varchar("meal_type", { length: 20 }).notNull(), // Breakfast, Lunch, Dinner, Snacks
   foodName: text("food_name").notNull(),
   brand: text("brand"),
@@ -213,8 +214,11 @@ export const foodEntries = pgTable("food_entries", {
   fiberPerServing: real("fiber_per_serving").default(0),
   sugarPerServing: real("sugar_per_serving").default(0),
   sodiumPerServing: real("sodium_per_serving").default(0),
-  servingLabel: varchar("serving_label", { length: 50 }),
+  cholesterolPerServing: real("cholesterol_per_serving").default(0),
+  servingLabel: varchar("serving_label", { length: 100 }),
+  servingGrams: real("serving_grams"),
   servingsCount: real("servings_count").notNull().default(1),
+  source: varchar("source", { length: 20 }).default("manual"), // manual, barcode, custom
   createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -7,7 +7,6 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
@@ -26,6 +25,7 @@ type NavigationProp = NativeStackNavigationProp<LogStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - Spacing.lg * 2;
+const CARD_MARGIN = Spacing.md;
 
 const MEAL_ICONS: Record<MealType, keyof typeof Feather.glyphMap> = {
   Breakfast: "sunrise",
@@ -34,6 +34,19 @@ const MEAL_ICONS: Record<MealType, keyof typeof Feather.glyphMap> = {
   Snacks: "coffee",
 };
 
+interface NutritionTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  sugar: number;
+  sodium: number;
+  cholesterol: number;
+}
+
+const DASHBOARD_CARDS = ["Calories", "Macros", "Heart Healthy", "Low Carb"] as const;
+
 export default function NutritionLogScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
@@ -41,7 +54,7 @@ export default function NutritionLogScreen() {
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
-  const scrollRef = useRef<ScrollView>(null);
+  const pagerRef = useRef<FlatList>(null);
 
   const date = route.params?.date || getToday();
   const { data: challenge } = useChallenge();
@@ -55,15 +68,23 @@ export default function NutritionLogScreen() {
   const targetProtein = challengeData?.targetProteinGrams || 150;
   const targetCarbs = challengeData?.targetCarbsGrams || 200;
   const targetFat = challengeData?.targetFatGrams || 65;
+  const targetFiber = 25;
+  const targetSugar = 50;
+  const targetSodium = 2300;
+  const targetCholesterol = 300;
 
-  const totals = useMemo(() => {
-    if (!foodEntries) return { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  const totals = useMemo((): NutritionTotals => {
+    if (!foodEntries) return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, cholesterol: 0 };
     return (foodEntries as FoodEntry[]).reduce((acc, entry) => ({
       calories: acc.calories + Math.round(entry.caloriesPerServing * entry.servingsCount),
       protein: acc.protein + Math.round((entry.proteinPerServing || 0) * entry.servingsCount),
       carbs: acc.carbs + Math.round((entry.carbsPerServing || 0) * entry.servingsCount),
       fat: acc.fat + Math.round((entry.fatPerServing || 0) * entry.servingsCount),
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      fiber: acc.fiber + Math.round((entry.fiberPerServing || 0) * entry.servingsCount),
+      sugar: acc.sugar + Math.round((entry.sugarPerServing || 0) * entry.servingsCount),
+      sodium: acc.sodium + Math.round((entry.sodiumPerServing || 0) * entry.servingsCount),
+      cholesterol: acc.cholesterol + Math.round((entry.cholesterolPerServing || 0) * entry.servingsCount),
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, cholesterol: 0 });
   }, [foodEntries]);
 
   const mealGroups = useMemo((): Partial<Record<MealType, FoodEntry[]>> => {
@@ -87,15 +108,7 @@ export default function NutritionLogScreen() {
   };
 
   const remainingCalories = targetCalories - totals.calories;
-
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CARD_WIDTH);
-    if (index !== cardIndex) {
-      setCardIndex(index);
-      Haptics.selectionAsync();
-    }
-  };
+  const netCarbs = Math.max(0, totals.carbs - totals.fiber);
 
   const handleAddFood = (mealType: MealType) => {
     navigation.navigate("AddFood", { date, mealType });
@@ -109,6 +122,133 @@ export default function NutritionLogScreen() {
     const newDate = addDays(date, offset);
     navigation.setParams({ date: newDate });
     Haptics.selectionAsync();
+  };
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
+    if (viewableItems.length > 0) {
+      const newIndex = viewableItems[0].index;
+      if (newIndex !== cardIndex) {
+        setCardIndex(newIndex);
+        Haptics.selectionAsync();
+      }
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+
+  const renderProgressBar = (label: string, value: number, target: number, color: string, unit: string = "g") => {
+    const progress = Math.min(value / target, 1);
+    const remaining = Math.max(0, target - value);
+    return (
+      <View style={styles.progressBarContainer}>
+        <View style={styles.progressBarHeader}>
+          <ThemedText style={styles.progressLabel}>{label}</ThemedText>
+          <ThemedText style={[styles.progressValue, { color: theme.textSecondary }]}>
+            {value}{unit} / {target}{unit}
+          </ThemedText>
+        </View>
+        <View style={[styles.progressBarBg, { backgroundColor: theme.backgroundTertiary }]}>
+          <View style={[styles.progressBarFill, { width: `${progress * 100}%`, backgroundColor: color }]} />
+        </View>
+        <ThemedText style={[styles.progressRemaining, { color: theme.textSecondary }]}>
+          {remaining}{unit} remaining
+        </ThemedText>
+      </View>
+    );
+  };
+
+  const renderDashboardCard = ({ item, index }: { item: typeof DASHBOARD_CARDS[number]; index: number }) => {
+    switch (item) {
+      case "Calories":
+        return (
+          <Card style={[styles.dashboardCard, { width: CARD_WIDTH }]}>
+            <ThemedText style={styles.cardLabel}>Remaining</ThemedText>
+            <ThemedText style={[styles.bigNumber, { color: remainingCalories >= 0 ? theme.success : theme.warning }]}>
+              {remainingCalories}
+            </ThemedText>
+            <ThemedText style={[styles.cardLabel, { color: theme.textSecondary }]}>
+              calories
+            </ThemedText>
+            
+            <View style={styles.formulaRow}>
+              <View style={styles.formulaItem}>
+                <ThemedText style={[styles.formulaValue, { color: theme.textSecondary }]}>{targetCalories}</ThemedText>
+                <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Goal</ThemedText>
+              </View>
+              <ThemedText style={[styles.formulaOperator, { color: theme.textSecondary }]}>-</ThemedText>
+              <View style={styles.formulaItem}>
+                <ThemedText style={[styles.formulaValue, { color: theme.textSecondary }]}>{totals.calories}</ThemedText>
+                <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Food</ThemedText>
+              </View>
+              <ThemedText style={[styles.formulaOperator, { color: theme.textSecondary }]}>=</ThemedText>
+              <View style={styles.formulaItem}>
+                <ThemedText style={[styles.formulaValue, { color: remainingCalories >= 0 ? theme.success : theme.warning }]}>{remainingCalories}</ThemedText>
+                <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Left</ThemedText>
+              </View>
+            </View>
+          </Card>
+        );
+
+      case "Macros":
+        return (
+          <Card style={[styles.dashboardCard, { width: CARD_WIDTH }]}>
+            <ThemedText style={styles.cardLabel}>Macros</ThemedText>
+            <View style={styles.macrosRings}>
+              <ProgressRing
+                progress={totals.carbs / targetCarbs}
+                color="#FF9500"
+                size={70}
+                strokeWidth={7}
+                label="Carbs"
+                value={`${totals.carbs}/${targetCarbs}`}
+              />
+              <ProgressRing
+                progress={totals.fat / targetFat}
+                color="#FF3B30"
+                size={70}
+                strokeWidth={7}
+                label="Fat"
+                value={`${totals.fat}/${targetFat}`}
+              />
+              <ProgressRing
+                progress={totals.protein / targetProtein}
+                color="#34C759"
+                size={70}
+                strokeWidth={7}
+                label="Protein"
+                value={`${totals.protein}/${targetProtein}`}
+              />
+            </View>
+          </Card>
+        );
+
+      case "Heart Healthy":
+        return (
+          <Card style={[styles.dashboardCard, { width: CARD_WIDTH }]}>
+            <ThemedText style={styles.cardLabel}>Heart Healthy</ThemedText>
+            <View style={styles.progressBarsContainer}>
+              {renderProgressBar("Total Fat", totals.fat, targetFat, "#FF3B30")}
+              {renderProgressBar("Sodium", totals.sodium, targetSodium, "#FF9500", "mg")}
+              {renderProgressBar("Cholesterol", totals.cholesterol, targetCholesterol, "#AF52DE", "mg")}
+            </View>
+          </Card>
+        );
+
+      case "Low Carb":
+        return (
+          <Card style={[styles.dashboardCard, { width: CARD_WIDTH }]}>
+            <ThemedText style={styles.cardLabel}>Low Carb</ThemedText>
+            <View style={styles.progressBarsContainer}>
+              {renderProgressBar("Net Carbs", netCarbs, 50, "#007AFF")}
+              {renderProgressBar("Sugar", totals.sugar, targetSugar, "#FF2D55")}
+              {renderProgressBar("Fiber", totals.fiber, targetFiber, "#34C759")}
+            </View>
+          </Card>
+        );
+
+      default:
+        return null;
+    }
   };
 
   return (
@@ -130,85 +270,60 @@ export default function NutritionLogScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        ref={scrollRef}
+      <FlatList
+        ref={pagerRef}
+        data={DASHBOARD_CARDS}
+        renderItem={renderDashboardCard}
+        keyExtractor={(item) => item}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        contentContainerStyle={styles.cardsContainer}
-        snapToInterval={CARD_WIDTH + Spacing.md}
+        snapToInterval={CARD_WIDTH + CARD_MARGIN}
+        snapToAlignment="start"
         decelerationRate="fast"
-      >
-        <Card style={{ ...styles.dashboardCard, width: CARD_WIDTH }}>
-          <ThemedText style={styles.cardLabel}>Remaining</ThemedText>
-          <ThemedText style={[styles.bigNumber, { color: remainingCalories >= 0 ? theme.success : theme.warning }]}>
-            {remainingCalories}
-          </ThemedText>
-          <ThemedText style={[styles.cardLabel, { color: theme.textSecondary }]}>
-            calories
-          </ThemedText>
-          
-          <View style={styles.formulaRow}>
-            <View style={styles.formulaItem}>
-              <ThemedText style={[styles.formulaValue, { color: theme.textSecondary }]}>{targetCalories}</ThemedText>
-              <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Goal</ThemedText>
-            </View>
-            <ThemedText style={[styles.formulaOperator, { color: theme.textSecondary }]}>-</ThemedText>
-            <View style={styles.formulaItem}>
-              <ThemedText style={[styles.formulaValue, { color: theme.textSecondary }]}>{totals.calories}</ThemedText>
-              <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Food</ThemedText>
-            </View>
-            <ThemedText style={[styles.formulaOperator, { color: theme.textSecondary }]}>=</ThemedText>
-            <View style={styles.formulaItem}>
-              <ThemedText style={[styles.formulaValue, { color: remainingCalories >= 0 ? theme.success : theme.warning }]}>{remainingCalories}</ThemedText>
-              <ThemedText style={[styles.formulaLabel, { color: theme.textSecondary }]}>Left</ThemedText>
-            </View>
-          </View>
-        </Card>
-
-        <Card style={{ ...styles.dashboardCard, width: CARD_WIDTH }}>
-          <ThemedText style={styles.cardLabel}>Macros</ThemedText>
-          <View style={styles.macrosRings}>
-            <ProgressRing
-              progress={totals.carbs / targetCarbs}
-              color="#FF9500"
-              size={70}
-              strokeWidth={7}
-              label="Carbs"
-              value={`${totals.carbs}/${targetCarbs}`}
-            />
-            <ProgressRing
-              progress={totals.fat / targetFat}
-              color="#FF3B30"
-              size={70}
-              strokeWidth={7}
-              label="Fat"
-              value={`${totals.fat}/${targetFat}`}
-            />
-            <ProgressRing
-              progress={totals.protein / targetProtein}
-              color="#34C759"
-              size={70}
-              strokeWidth={7}
-              label="Protein"
-              value={`${totals.protein}/${targetProtein}`}
-            />
-          </View>
-        </Card>
-      </ScrollView>
+        contentContainerStyle={styles.cardsContainer}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        getItemLayout={(_, index) => ({
+          length: CARD_WIDTH + CARD_MARGIN,
+          offset: (CARD_WIDTH + CARD_MARGIN) * index,
+          index,
+        })}
+      />
 
       <View style={styles.dotsContainer}>
-        {[0, 1].map((i) => (
-          <View
+        {DASHBOARD_CARDS.map((_, i) => (
+          <Pressable
             key={i}
-            style={[
-              styles.dot,
-              { backgroundColor: i === cardIndex ? theme.primary : theme.backgroundTertiary }
-            ]}
-          />
+            onPress={() => {
+              pagerRef.current?.scrollToIndex({ index: i, animated: true });
+            }}
+          >
+            <View
+              style={[
+                styles.dot,
+                { backgroundColor: i === cardIndex ? theme.primary : theme.backgroundTertiary }
+              ]}
+            />
+          </Pressable>
         ))}
+      </View>
+
+      <View style={styles.actionButtons}>
+        <Pressable
+          style={[styles.actionButton, { backgroundColor: theme.primary }]}
+          onPress={() => navigation.navigate("AddFood", { date, mealType: "Snacks" })}
+        >
+          <Feather name="plus" size={18} color="#fff" />
+          <ThemedText style={styles.actionButtonText}>Log Food</ThemedText>
+        </Pressable>
+        <Pressable
+          style={[styles.actionButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, borderWidth: 1 }]}
+          onPress={() => navigation.navigate("BarcodeScanner", { date, mealType: "Snacks" })}
+        >
+          <Feather name="maximize" size={18} color={theme.text} />
+          <ThemedText style={[styles.actionButtonText, { color: theme.text }]}>Scan Barcode</ThemedText>
+        </Pressable>
       </View>
 
       <View style={styles.mealsContainer}>
@@ -304,11 +419,12 @@ const styles = StyleSheet.create({
   },
   cardsContainer: {
     paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
   },
   dashboardCard: {
     padding: Spacing.xl,
     alignItems: "center",
+    marginRight: Spacing.md,
+    minHeight: 200,
   },
   cardLabel: {
     ...Typography.subheadline,
@@ -345,6 +461,41 @@ const styles = StyleSheet.create({
     width: "100%",
     marginTop: Spacing.lg,
   },
+  progressBarsContainer: {
+    width: "100%",
+    marginTop: Spacing.md,
+    gap: Spacing.md,
+  },
+  progressBarContainer: {
+    width: "100%",
+  },
+  progressBarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.xs,
+  },
+  progressLabel: {
+    ...Typography.subheadline,
+    fontWeight: "500",
+  },
+  progressValue: {
+    ...Typography.caption,
+  },
+  progressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  progressRemaining: {
+    ...Typography.caption,
+    marginTop: 2,
+    textAlign: "right",
+  },
   dotsContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -355,6 +506,26 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  actionButtonText: {
+    ...Typography.subheadline,
+    fontWeight: "600",
+    color: "#fff",
   },
   mealsContainer: {
     paddingHorizontal: Spacing.lg,
