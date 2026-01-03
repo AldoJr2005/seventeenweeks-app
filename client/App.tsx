@@ -12,6 +12,7 @@ import { queryClient } from "@/lib/query-client";
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { useChallenge } from "@/hooks/useChallenge";
 import { getChallengeStatus } from "@/lib/challenge-utils";
 import SetupScreen from "@/screens/SetupScreen";
@@ -58,18 +59,20 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <GestureHandlerRootView style={styles.root}>
-            <KeyboardProvider>
-              <NavigationContainer>
-                <AuthProvider>
-                  <AppContent />
-                </AuthProvider>
-              </NavigationContainer>
-              <StatusBar style="auto" />
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </SafeAreaProvider>
+        <ThemeProvider>
+          <SafeAreaProvider>
+            <GestureHandlerRootView style={styles.root}>
+              <KeyboardProvider>
+                <NavigationContainer>
+                  <AuthProvider>
+                    <AppContent />
+                  </AuthProvider>
+                </NavigationContainer>
+                <StatusBar style="auto" />
+              </KeyboardProvider>
+            </GestureHandlerRootView>
+          </SafeAreaProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, View, StyleSheet, Pressable, Switch, Alert, Modal, TextInput } from "react-native";
+import { ScrollView, View, StyleSheet, Pressable, Switch, Alert, Modal, TextInput, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
+import { useThemeMode, ThemeMode } from "@/contexts/ThemeContext";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/Card";
@@ -25,13 +26,14 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
 
   const { data: challenge } = useChallenge();
   const updateChallenge = useUpdateChallenge();
   const { profile, lock, logout, refreshAuth } = useAuth();
   const updateProfile = useUpdateProfile();
+  const { themeMode, setThemeMode } = useThemeMode();
 
   const [smartReminders, setSmartReminders] = useState(
     (challenge as Challenge | undefined)?.smartReminders ?? true
@@ -201,6 +203,39 @@ export default function SettingsScreen() {
             <ThemedText style={[styles.settingsLabel, { color: theme.primary }]}>Lock App Now</ThemedText>
           </View>
         </Pressable>
+      </Card>
+
+      <ThemedText style={styles.sectionHeader}>Appearance</ThemedText>
+      <Card style={styles.section}>
+        <View style={styles.themeRow}>
+          {(["light", "dark", "system"] as ThemeMode[]).map((mode) => (
+            <Pressable
+              key={mode}
+              style={[
+                styles.themeOption,
+                { 
+                  backgroundColor: themeMode === mode ? theme.primary : theme.backgroundSecondary,
+                  borderColor: themeMode === mode ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => setThemeMode(mode)}
+            >
+              <Feather
+                name={mode === "light" ? "sun" : mode === "dark" ? "moon" : "smartphone"}
+                size={16}
+                color={themeMode === mode ? "#FFF" : theme.textSecondary}
+              />
+              <ThemedText
+                style={[
+                  styles.themeOptionText,
+                  { color: themeMode === mode ? "#FFF" : theme.text },
+                ]}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </ThemedText>
+            </Pressable>
+          ))}
+        </View>
       </Card>
 
       <ThemedText style={styles.sectionHeader}>Challenge</ThemedText>
@@ -414,6 +449,14 @@ export default function SettingsScreen() {
         </Pressable>
       </Card>
 
+      <View style={styles.signatureContainer}>
+        <Image
+          source={require("../../assets/images/signature.png")}
+          style={[styles.signature, { opacity: isDark ? 0.4 : 0.25 }]}
+          resizeMode="contain"
+        />
+      </View>
+
       <Modal visible={showPasswordModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
@@ -574,5 +617,35 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     textAlign: "center",
     ...Typography.footnote,
+  },
+  themeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.md,
+  },
+  themeOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.xs,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  themeOptionText: {
+    ...Typography.footnote,
+    fontWeight: "600",
+  },
+  signatureContainer: {
+    alignItems: "center",
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  signature: {
+    width: 120,
+    height: 40,
   },
 });
