@@ -1,5 +1,5 @@
 import {
-  challenges, dayLogs, workoutLogs, weeklyPhotos, weeklyCheckIns, habitLogs, reminderLogs, userProfiles, appSettings,
+  challenges, dayLogs, workoutLogs, weeklyPhotos, weeklyCheckIns, habitLogs, reminderLogs, userProfiles, appSettings, baselineSnapshots, weeklyReflections,
   type Challenge, type InsertChallenge,
   type DayLog, type InsertDayLog,
   type WorkoutLog, type InsertWorkoutLog,
@@ -9,6 +9,8 @@ import {
   type ReminderLog, type InsertReminderLog,
   type UserProfile, type InsertUserProfile,
   type AppSettings, type InsertAppSettings,
+  type BaselineSnapshot, type InsertBaselineSnapshot,
+  type WeeklyReflection, type InsertWeeklyReflection,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc } from "drizzle-orm";
@@ -63,6 +65,17 @@ export interface IStorage {
   getAppSettings(): Promise<AppSettings | undefined>;
   createAppSettings(settings: InsertAppSettings): Promise<AppSettings>;
   updateAppSettings(id: string, settings: Partial<InsertAppSettings>): Promise<AppSettings | undefined>;
+  
+  // Baseline Snapshots
+  getBaselineSnapshot(challengeId: string): Promise<BaselineSnapshot | undefined>;
+  createBaselineSnapshot(snapshot: InsertBaselineSnapshot): Promise<BaselineSnapshot>;
+  updateBaselineSnapshot(id: string, snapshot: Partial<InsertBaselineSnapshot>): Promise<BaselineSnapshot | undefined>;
+  
+  // Weekly Reflections
+  getWeeklyReflection(challengeId: string, weekNumber: number): Promise<WeeklyReflection | undefined>;
+  getWeeklyReflections(challengeId: string): Promise<WeeklyReflection[]>;
+  createWeeklyReflection(reflection: InsertWeeklyReflection): Promise<WeeklyReflection>;
+  updateWeeklyReflection(id: string, reflection: Partial<InsertWeeklyReflection>): Promise<WeeklyReflection | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -225,6 +238,43 @@ export class DatabaseStorage implements IStorage {
 
   async updateAppSettings(id: string, settings: Partial<InsertAppSettings>): Promise<AppSettings | undefined> {
     const [updated] = await db.update(appSettings).set({ ...settings, updatedAt: new Date() }).where(eq(appSettings.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Baseline Snapshots
+  async getBaselineSnapshot(challengeId: string): Promise<BaselineSnapshot | undefined> {
+    const [snapshot] = await db.select().from(baselineSnapshots).where(eq(baselineSnapshots.challengeId, challengeId));
+    return snapshot || undefined;
+  }
+
+  async createBaselineSnapshot(snapshot: InsertBaselineSnapshot): Promise<BaselineSnapshot> {
+    const [created] = await db.insert(baselineSnapshots).values(snapshot).returning();
+    return created;
+  }
+
+  async updateBaselineSnapshot(id: string, snapshot: Partial<InsertBaselineSnapshot>): Promise<BaselineSnapshot | undefined> {
+    const [updated] = await db.update(baselineSnapshots).set(snapshot).where(eq(baselineSnapshots.id, id)).returning();
+    return updated || undefined;
+  }
+
+  // Weekly Reflections
+  async getWeeklyReflection(challengeId: string, weekNumber: number): Promise<WeeklyReflection | undefined> {
+    const [reflection] = await db.select().from(weeklyReflections)
+      .where(and(eq(weeklyReflections.challengeId, challengeId), eq(weeklyReflections.weekNumber, weekNumber)));
+    return reflection || undefined;
+  }
+
+  async getWeeklyReflections(challengeId: string): Promise<WeeklyReflection[]> {
+    return db.select().from(weeklyReflections).where(eq(weeklyReflections.challengeId, challengeId)).orderBy(asc(weeklyReflections.weekNumber));
+  }
+
+  async createWeeklyReflection(reflection: InsertWeeklyReflection): Promise<WeeklyReflection> {
+    const [created] = await db.insert(weeklyReflections).values(reflection).returning();
+    return created;
+  }
+
+  async updateWeeklyReflection(id: string, reflection: Partial<InsertWeeklyReflection>): Promise<WeeklyReflection | undefined> {
+    const [updated] = await db.update(weeklyReflections).set({ ...reflection, updatedAt: new Date() }).where(eq(weeklyReflections.id, id)).returning();
     return updated || undefined;
   }
 }

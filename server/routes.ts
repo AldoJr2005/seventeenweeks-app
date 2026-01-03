@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import {
   insertChallengeSchema, insertDayLogSchema, insertWorkoutLogSchema,
   insertWeeklyPhotoSchema, insertWeeklyCheckInSchema, insertHabitLogSchema,
-  insertUserProfileSchema, insertAppSettingsSchema
+  insertUserProfileSchema, insertAppSettingsSchema,
+  insertBaselineSnapshotSchema, insertWeeklyReflectionSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -371,6 +372,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
+  // Baseline snapshot routes
+  app.get("/api/baseline/:challengeId", async (req, res) => {
+    try {
+      const snapshot = await storage.getBaselineSnapshot(req.params.challengeId);
+      res.json(snapshot || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch baseline snapshot" });
+    }
+  });
+
+  app.post("/api/baseline", async (req, res) => {
+    try {
+      const parsed = insertBaselineSnapshotSchema.parse(req.body);
+      const snapshot = await storage.createBaselineSnapshot(parsed);
+      res.status(201).json(snapshot);
+    } catch (error: any) {
+      console.error("Baseline snapshot creation error:", error);
+      res.status(400).json({ error: error.message || "Invalid baseline snapshot data" });
+    }
+  });
+
+  app.patch("/api/baseline/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateBaselineSnapshot(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Baseline snapshot not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update baseline snapshot" });
+    }
+  });
+
+  // Weekly reflection routes
+  app.get("/api/reflections", async (req, res) => {
+    try {
+      const challengeId = req.query.challengeId as string;
+      if (!challengeId) {
+        return res.status(400).json({ error: "challengeId required" });
+      }
+      const reflections = await storage.getWeeklyReflections(challengeId);
+      res.json(reflections);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reflections" });
+    }
+  });
+
+  app.get("/api/reflections/:challengeId/:weekNumber", async (req, res) => {
+    try {
+      const reflection = await storage.getWeeklyReflection(
+        req.params.challengeId,
+        parseInt(req.params.weekNumber)
+      );
+      res.json(reflection || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reflection" });
+    }
+  });
+
+  app.post("/api/reflections", async (req, res) => {
+    try {
+      const parsed = insertWeeklyReflectionSchema.parse(req.body);
+      const reflection = await storage.createWeeklyReflection(parsed);
+      res.status(201).json(reflection);
+    } catch (error: any) {
+      console.error("Reflection creation error:", error);
+      res.status(400).json({ error: error.message || "Invalid reflection data" });
+    }
+  });
+
+  app.patch("/api/reflections/:id", async (req, res) => {
+    try {
+      const updated = await storage.updateWeeklyReflection(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Reflection not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update reflection" });
     }
   });
 

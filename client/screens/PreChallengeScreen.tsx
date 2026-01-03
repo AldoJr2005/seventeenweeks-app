@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable, TextInput, Platform, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
@@ -9,8 +11,10 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Challenge } from "@shared/schema";
+import { useBaselineSnapshot, useCreateBaselineSnapshot, useUpdateBaselineSnapshot } from "@/hooks/useBaseline";
+import type { Challenge, BaselineSnapshot } from "@shared/schema";
 
 interface PreChallengeScreenProps {
   challenge: Challenge;
@@ -50,6 +54,15 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
   const { logout } = useAuth();
   
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining(challenge.startDate));
+  const [showBaselineForm, setShowBaselineForm] = useState(false);
+  const [typicalSteps, setTypicalSteps] = useState("");
+  const [typicalCalories, setTypicalCalories] = useState("");
+  const [typicalSleep, setTypicalSleep] = useState("");
+  const [baselinePhoto, setBaselinePhoto] = useState<string | null>(null);
+
+  const { data: existingBaseline } = useBaselineSnapshot(challenge.id);
+  const createBaseline = useCreateBaselineSnapshot();
+  const updateBaseline = useUpdateBaselineSnapshot();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -59,12 +72,96 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
     return () => clearInterval(interval);
   }, [challenge.startDate]);
 
+  useEffect(() => {
+    if (existingBaseline) {
+      setTypicalSteps(existingBaseline.typicalSteps?.toString() || "");
+      setTypicalCalories(existingBaseline.typicalCalories?.toString() || "");
+      setTypicalSleep(existingBaseline.typicalSleep?.toString() || "");
+      setBaselinePhoto(existingBaseline.baselinePhotoUri || null);
+    }
+  }, [existingBaseline]);
+
   const handleLogout = async () => {
     await logout();
   };
 
+  const handleTakePhoto = async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Web Limitation", "Camera is not available on web. Please use Expo Go on your device to take photos.");
+      return;
+    }
+
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      if (permission.status === "denied" && !permission.canAskAgain) {
+        Alert.alert(
+          "Camera Permission Required",
+          "Please enable camera access in your device settings to take a baseline photo.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { 
+              text: "Open Settings", 
+              onPress: async () => {
+                try {
+                  await Linking.openSettings();
+                } catch (error) {
+                  console.log("Cannot open settings");
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert("Permission needed", "Camera access is required to take a baseline photo.");
+      }
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].base64 
+        ? `data:image/jpeg;base64,${result.assets[0].base64}`
+        : result.assets[0].uri;
+      setBaselinePhoto(uri);
+    }
+  };
+
+  const handleSaveBaseline = async () => {
+    const data = {
+      challengeId: challenge.id,
+      baselineWeight: challenge.startWeight,
+      baselinePhotoUri: baselinePhoto,
+      typicalSteps: typicalSteps ? parseInt(typicalSteps) : null,
+      typicalCalories: typicalCalories ? parseInt(typicalCalories) : null,
+      typicalSleep: typicalSleep ? parseFloat(typicalSleep) : null,
+    };
+
+    try {
+      if (existingBaseline) {
+        await updateBaseline.mutateAsync({ id: existingBaseline.id, data });
+      } else {
+        await createBaseline.mutateAsync(data);
+      }
+      setShowBaselineForm(false);
+    } catch (error) {
+      console.error("Failed to save baseline:", error);
+    }
+  };
+
+  const hasBaseline = !!existingBaseline;
+
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl }]}>
+    <KeyboardAwareScrollViewCompat 
+      style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl }]}
+    >
       <View style={styles.header}>
         <ThemedText style={styles.title}>Challenge Starts In</ThemedText>
         <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
@@ -81,6 +178,97 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
         <ThemedText style={[styles.separator, { color: theme.textSecondary }]}>:</ThemedText>
         <CountdownUnit value={timeRemaining.seconds} label="Sec" theme={theme} />
       </View>
+
+      <Card style={styles.baselineCard}>
+        <View style={styles.baselineHeader}>
+          <View>
+            <ThemedText style={styles.cardTitle}>Week 0 Baseline</ThemedText>
+            <ThemedText style={[styles.baselineSubtitle, { color: theme.textSecondary }]}>
+              Capture your starting point
+            </ThemedText>
+          </View>
+          {hasBaseline ? (
+            <Feather name="check-circle" size={24} color={theme.success} />
+          ) : null}
+        </View>
+
+        {showBaselineForm ? (
+          <View style={styles.baselineForm}>
+            <Pressable 
+              style={[styles.photoButton, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+              onPress={handleTakePhoto}
+            >
+              {baselinePhoto ? (
+                <Image source={{ uri: baselinePhoto }} style={styles.photoPreview} contentFit="cover" />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Feather name="camera" size={32} color={theme.textSecondary} />
+                  <ThemedText style={[styles.photoText, { color: theme.textSecondary }]}>Take Photo</ThemedText>
+                </View>
+              )}
+            </Pressable>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Typical Daily Steps</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g., 5000"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="number-pad"
+                value={typicalSteps}
+                onChangeText={setTypicalSteps}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Typical Daily Calories</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g., 2000"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="number-pad"
+                value={typicalCalories}
+                onChangeText={setTypicalCalories}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Typical Sleep (hours)</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g., 7"
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                value={typicalSleep}
+                onChangeText={setTypicalSleep}
+              />
+            </View>
+
+            <View style={styles.formButtons}>
+              <Pressable 
+                style={[styles.cancelButton, { borderColor: theme.border }]}
+                onPress={() => setShowBaselineForm(false)}
+              >
+                <ThemedText>Cancel</ThemedText>
+              </Pressable>
+              <Button 
+                onPress={handleSaveBaseline}
+                disabled={createBaseline.isPending || updateBaseline.isPending}
+                style={styles.saveButton}
+              >
+                {createBaseline.isPending || updateBaseline.isPending ? "Saving..." : "Save Baseline"}
+              </Button>
+            </View>
+          </View>
+        ) : (
+          <Button 
+            onPress={() => setShowBaselineForm(true)}
+            style={styles.captureButton}
+          >
+            {hasBaseline ? "Edit Baseline" : "Capture Baseline"}
+          </Button>
+        )}
+      </Card>
 
       <Card style={styles.planCard}>
         <ThemedText style={styles.cardTitle}>Your Plan</ThemedText>
@@ -141,7 +329,7 @@ export default function PreChallengeScreen({ challenge, onEditPlan }: PreChallen
       <ThemedText style={[styles.helpText, { color: theme.textSecondary }]}>
         You can only log data once your challenge begins. Check back on Monday!
       </ThemedText>
-    </ThemedView>
+    </KeyboardAwareScrollViewCompat>
   );
 }
 
@@ -158,7 +346,6 @@ function CountdownUnit({ value, label, theme }: { value: number; label: string; 
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: Spacing.xl,
     alignItems: "center",
   },
@@ -178,7 +365,7 @@ const styles = StyleSheet.create({
   countdownContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing["3xl"],
+    marginBottom: Spacing.xl,
   },
   countdownUnit: {
     alignItems: "center",
@@ -254,5 +441,77 @@ const styles = StyleSheet.create({
     ...Typography.footnote,
     textAlign: "center",
     paddingHorizontal: Spacing.xl,
+  },
+  baselineCard: {
+    width: "100%",
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+  },
+  baselineHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: Spacing.lg,
+  },
+  baselineSubtitle: {
+    ...Typography.footnote,
+    marginTop: Spacing.xs,
+  },
+  baselineForm: {
+    gap: Spacing.md,
+  },
+  photoButton: {
+    width: "100%",
+    aspectRatio: 3 / 4,
+    maxHeight: 200,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    overflow: "hidden",
+  },
+  photoPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  photoText: {
+    ...Typography.footnote,
+  },
+  photoPreview: {
+    width: "100%",
+    height: "100%",
+  },
+  inputGroup: {
+    gap: Spacing.xs,
+  },
+  inputLabel: {
+    ...Typography.footnote,
+  },
+  input: {
+    height: Spacing.inputHeight,
+    borderRadius: BorderRadius.sm,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    ...Typography.body,
+  },
+  formButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  cancelButton: {
+    flex: 1,
+    height: Spacing.buttonHeight,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  saveButton: {
+    flex: 2,
+  },
+  captureButton: {
+    marginTop: Spacing.sm,
   },
 });
