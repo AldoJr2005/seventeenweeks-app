@@ -20,11 +20,17 @@ async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     let errorMessage = res.statusText;
     try {
-      const data = await res.json();
-      errorMessage = data.error || data.message || JSON.stringify(data);
-    } catch {
       const text = await res.text();
-      if (text) errorMessage = text;
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+          errorMessage = data.error || data.message || text;
+        } catch {
+          errorMessage = text;
+        }
+      }
+    } catch {
+      // Body already consumed or other error
     }
     throw new Error(errorMessage);
   }
