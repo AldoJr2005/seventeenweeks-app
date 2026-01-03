@@ -1,0 +1,103 @@
+Extend the existing **Create Account / Onboarding wizard** to add TWO additional required steps:
+1) Step Goal setup
+2) Reminder Intensity preference
+
+Do NOT change the rest of the onboarding flow. These steps must be part of account creation so the plan is fully configured BEFORE the Monday challenge starts.
+
+========================
+ADD TO MULTI-STEP SETUP
+========================
+
+INSERT NEW STEP — STEP GOAL SETUP
+(Place this AFTER the Workout Plan step and BEFORE Fasting Setup)
+
+Title: “Daily Step Goal”
+
+Ask the user:
+- “How many steps per day do you want to aim for?”
+
+Options (segmented control or cards):
+- 6,000 steps
+- 8,000 steps
+- 10,000 steps
+- Custom (number input)
+
+Rules:
+- One option must be selected to continue
+- Save as stepGoal in the Challenge/Preferences table
+- This goal will be used ONLY for:
+  • Habit completion logic
+  • Weekly summaries
+  • Compliance score
+  • Insights
+- Do NOT coach or nag beyond reminders
+
+UI requirements:
+- Apple-style cards
+- Clear highlight on selected option
+- Short helper text: “This helps track daily movement consistency”
+
+========================
+INSERT NEW STEP — REMINDER INTENSITY
+========================
+(Place this AFTER Fasting Setup and BEFORE Review & Finish)
+
+Title: “Reminder Style”
+
+Ask:
+- “How strict should reminders be?”
+
+Options (single selection):
+- Gentle  
+  • Fewer reminders  
+  • Softer language  
+  • No follow-ups
+- Normal (default)
+  • Standard reminders  
+  • One follow-up if incomplete
+- Strict
+  • Firm wording  
+  • Follow-up reminder if still incomplete
+
+Rules:
+- One option must be selected
+- Save as reminderIntensity enum:
+  GENTLE | NORMAL | STRICT
+
+Use this preference to:
+- Adjust reminder wording
+- Control whether follow-up notifications are sent
+- Control frequency (never spam)
+
+UI requirements:
+- Minimal explanation text
+- Clean selectable cards
+- Default to “Normal”
+
+========================
+DATA MODEL UPDATES
+========================
+Add fields:
+- stepGoal (integer)
+- reminderIntensity (enum)
+
+Ensure these fields are:
+- Saved during onboarding
+- Displayed in the Plan Summary screen
+- Editable later in Settings
+- Used by reminder scheduling logic
+
+========================
+FINAL CONFIRMATION SCREEN UPDATE
+========================
+Update the “Review & Finish” screen to include:
+- Step goal (e.g., “8,000 steps/day”)
+- Reminder style (e.g., “Normal reminders”)
+
+========================
+DELIVERABLE
+========================
+- Updated onboarding wizard with Step Goal and Reminder Intensity steps
+- Values saved correctly
+- Used in habits, reminders, compliance scoring
+- Apple-style UI consistent with rest of the app

@@ -1,38 +1,105 @@
-import React, { useState } from "react";
-import { View, StyleSheet, TextInput, Image, ActivityIndicator, Pressable } from "react-native";
+import React, { useState, useMemo } from "react";
+import { View, StyleSheet, TextInput, Image, ActivityIndicator, Pressable, Platform, Alert, Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing, BorderRadius, Typography } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
+import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useCreateProfile } from "@/hooks/useProfile";
+import { useCreateChallenge } from "@/hooks/useChallenge";
+import { useCreateBaselineSnapshot } from "@/hooks/useBaseline";
 import { useAuth } from "@/contexts/AuthContext";
 import { hashPassword, setSessionUnlocked } from "@/lib/auth";
+import { getUpcomingMonday, formatDate } from "@/lib/date-utils";
+import { calculateTDEE, calculateCalorieTarget } from "@/lib/tdee-utils";
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 9;
+
+const ACTIVITY_LEVELS = [
+  { id: "sedentary", label: "Sedentary", desc: "Little to no exercise", multiplier: 1.2 },
+  { id: "light", label: "Light", desc: "Light exercise 1-3 days/week", multiplier: 1.375 },
+  { id: "moderate", label: "Moderate", desc: "Moderate exercise 3-5 days/week", multiplier: 1.55 },
+  { id: "active", label: "Very Active", desc: "Hard exercise 6-7 days/week", multiplier: 1.725 },
+];
+
+const DEFICIT_LEVELS = [
+  { id: "conservative", lossPerWeek: 0.5, label: "Conservative", desc: "0.5 lb/week - Sustainable" },
+  { id: "moderate", lossPerWeek: 1.0, label: "Moderate", desc: "1 lb/week - Recommended" },
+  { id: "aggressive", lossPerWeek: 1.5, label: "Aggressive", desc: "1.5 lb/week - Challenging" },
+];
+
+const SPLIT_OPTIONS = [
+  { id: "ppl", label: "Push/Pull/Legs" },
+  { id: "upper_lower", label: "Upper/Lower" },
+  { id: "full_body", label: "Full Body" },
+  { id: "cardio", label: "Cardio-focused" },
+];
+
+const STEP_GOALS = [
+  { value: 6000, label: "6,000" },
+  { value: 8000, label: "8,000" },
+  { value: 10000, label: "10,000" },
+];
+
+const FASTING_TYPES = [
+  { id: "16_8", label: "16:8", fastHours: 16, eatHours: 8 },
+  { id: "18_6", label: "18:6", fastHours: 18, eatHours: 6 },
+  { id: "20_4", label: "20:4", fastHours: 20, eatHours: 4 },
+  { id: "none", label: "No Fasting", fastHours: 0, eatHours: 24 },
+];
+
+const REMINDER_INTENSITIES = [
+  { id: "GENTLE", label: "Gentle", desc: "Fewer reminders, softer language" },
+  { id: "NORMAL", label: "Normal", desc: "Standard reminders with one follow-up" },
+  { id: "STRICT", label: "Strict", desc: "Firm wording, follow-up if incomplete" },
+];
 
 export default function SetupScreen() {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const createProfile = useCreateProfile();
+  const createChallenge = useCreateChallenge();
+  const createBaseline = useCreateBaselineSnapshot();
   const { refreshAuth } = useAuth();
 
   const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
   const [name, setName] = useState("");
+  const [age, setAge] = useState("");
+  const [sex, setSex] = useState<"male" | "female" | "">("");
   const [heightFeet, setHeightFeet] = useState("");
   const [heightInches, setHeightInches] = useState("");
   const [heightCm, setHeightCm] = useState("");
   const [heightUnit, setHeightUnit] = useState<"ft" | "cm">("ft");
   const [currentWeight, setCurrentWeight] = useState("");
   const [weightUnit, setWeightUnit] = useState<"lbs" | "kg">("lbs");
-  const [age, setAge] = useState("");
-  const [sex, setSex] = useState<"male" | "female" | "">("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [goalWeight, setGoalWeight] = useState("");
+  const [deficitLevel, setDeficitLevel] = useState("moderate");
+  const [activityLevel, setActivityLevel] = useState("moderate");
+  const [workoutsPerWeek, setWorkoutsPerWeek] = useState(4);
+  const [doesRun, setDoesRun] = useState(false);
+  const [runningDaysPerWeek, setRunningDaysPerWeek] = useState(0);
+  const [preferredSplit, setPreferredSplit] = useState("ppl");
+  const [stepGoal, setStepGoal] = useState(8000);
+  const [customStepGoal, setCustomStepGoal] = useState("");
+  const [useCustomSteps, setUseCustomSteps] = useState(false);
+  const [fastingType, setFastingType] = useState("16_8");
+  const [lunchTime, setLunchTime] = useState("12:00");
+  const [reminderIntensity, setReminderIntensity] = useState("NORMAL");
+  const [baselinePhoto, setBaselinePhoto] = useState<string | null>(null);
+
+  const startDate = getUpcomingMonday();
+  const startDateFormatted = formatDate(startDate);
 
   const getHeightValue = (): number => {
     if (heightUnit === "ft") {
@@ -43,62 +110,180 @@ export default function SetupScreen() {
     return parseFloat(heightCm) || 0;
   };
 
-  const isStep1Valid = name.trim().length > 0;
-  const isStep2Valid = heightUnit === "ft" 
-    ? (heightFeet || heightInches) 
-    : heightCm;
-  const isStep3Valid = currentWeight.trim().length > 0;
-  const isStep4Valid = age.trim().length > 0 && sex !== "";
-  const isStep5Valid = password.length >= 4 && password === confirmPassword;
+  const getHeightInCm = (): number => {
+    if (heightUnit === "ft") {
+      const totalInches = getHeightValue();
+      return totalInches * 2.54;
+    }
+    return parseFloat(heightCm) || 0;
+  };
+
+  const getWeightInKg = (): number => {
+    const weight = parseFloat(currentWeight) || 0;
+    return weightUnit === "kg" ? weight : weight * 0.453592;
+  };
+
+  const tdee = useMemo(() => {
+    const weightKg = getWeightInKg();
+    const heightCmVal = getHeightInCm();
+    const ageNum = parseInt(age) || 0;
+    if (!weightKg || !heightCmVal || !ageNum || !sex) return 0;
+    return calculateTDEE(weightKg, heightCmVal, ageNum, sex, activityLevel);
+  }, [currentWeight, weightUnit, heightUnit, heightFeet, heightInches, heightCm, age, sex, activityLevel]);
+
+  const targetCalories = useMemo(() => {
+    const deficit = DEFICIT_LEVELS.find(d => d.id === deficitLevel);
+    return calculateCalorieTarget(tdee, deficit?.lossPerWeek || 1);
+  }, [tdee, deficitLevel]);
+
+  const eatingWindow = useMemo(() => {
+    const fasting = FASTING_TYPES.find(f => f.id === fastingType);
+    if (!fasting || fastingType === "none") return null;
+    const [lunchHour] = lunchTime.split(":").map(Number);
+    const startHour = lunchHour;
+    const endHour = (startHour + fasting.eatHours) % 24;
+    const formatHour = (h: number) => {
+      const period = h >= 12 ? "PM" : "AM";
+      const hour12 = h % 12 || 12;
+      return `${hour12}:00 ${period}`;
+    };
+    return {
+      start: `${String(startHour).padStart(2, "0")}:00`,
+      end: `${String(endHour).padStart(2, "0")}:00`,
+      display: `${formatHour(startHour)} - ${formatHour(endHour)}`,
+    };
+  }, [fastingType, lunchTime]);
+
+  const finalStepGoal = useCustomSteps ? (parseInt(customStepGoal) || 8000) : stepGoal;
+
+  const isStep1Valid = name.trim().length > 0 && age.trim().length > 0 && sex !== "" &&
+    !!(heightUnit === "ft" ? (heightFeet || heightInches) : heightCm) &&
+    currentWeight.trim().length > 0 && password.length >= 4 && password === confirmPassword;
+  const isStep2Valid = goalWeight.trim().length > 0;
+  const isStep3Valid = activityLevel !== "" && deficitLevel !== "" && targetCalories > 0;
+  const isStep4Valid = workoutsPerWeek >= 0 && preferredSplit !== "";
+  const isStep5Valid = finalStepGoal >= 1000;
+  const isStep6Valid = fastingType !== "";
+  const isStep7Valid = reminderIntensity !== "";
+
+  const canContinue = (): boolean => {
+    switch (step) {
+      case 1: return isStep1Valid;
+      case 2: return isStep2Valid;
+      case 3: return isStep3Valid;
+      case 4: return isStep4Valid;
+      case 5: return isStep5Valid;
+      case 6: return isStep6Valid;
+      case 7: return isStep7Valid;
+      case 8: return true;
+      case 9: return true;
+      default: return false;
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Web Limitation", "Camera is not available on web. Please use Expo Go on your device.");
+      return;
+    }
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      if (permission.status === "denied" && !permission.canAskAgain) {
+        Alert.alert("Camera Permission Required", "Please enable camera access in your device settings.", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: () => { try { Linking.openSettings(); } catch {} } },
+        ]);
+      }
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.8,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].base64
+        ? `data:image/jpeg;base64,${result.assets[0].base64}`
+        : result.assets[0].uri;
+      setBaselinePhoto(uri);
+    }
+  };
 
   const handleComplete = async () => {
     if (password !== confirmPassword) {
       setError("PINs don't match");
       return;
     }
-    if (password.length < 4) {
-      setError("PIN must be at least 4 digits");
-      return;
-    }
-
     setIsLoading(true);
     setError("");
 
     try {
       const passwordHash = await hashPassword(password);
       const heightValue = getHeightValue();
+      const weightValue = parseFloat(currentWeight);
 
-      await createProfile.mutateAsync({
+      const profile = await createProfile.mutateAsync({
         name: name.trim(),
         heightValue,
         heightUnit,
         weightUnit,
-        currentWeight: parseFloat(currentWeight),
+        currentWeight: weightValue,
         age: parseInt(age),
         sex,
         passwordHash,
         requirePasswordOnOpen: true,
         autoLockMinutes: 5,
-        onboardingComplete: false,
+        onboardingComplete: true,
+      });
+
+      const challenge = await createChallenge.mutateAsync({
+        status: "PRE_CHALLENGE",
+        startDate: startDateFormatted,
+        startWeight: weightValue,
+        goalWeight: parseFloat(goalWeight),
+        unit: weightUnit,
+        stepGoal: finalStepGoal,
+        sleepGoal: 8,
+        activityLevel,
+        tdeeEstimate: tdee,
+        targetCalories,
+        targetWeeklyLoss: DEFICIT_LEVELS.find(d => d.id === deficitLevel)?.lossPerWeek || 1,
+        deficitLevel,
+        workoutsPerWeek,
+        preferredSplit,
+        doesRun,
+        runningDaysPerWeek: doesRun ? runningDaysPerWeek : 0,
+        fastingType: fastingType !== "none" ? fastingType : null,
+        lunchTime: fastingType !== "none" ? lunchTime : null,
+        eatingStartTime: eatingWindow?.start || null,
+        eatingEndTime: eatingWindow?.end || null,
+        reminderIntensity,
+        smartReminders: true,
+      });
+
+      await createBaseline.mutateAsync({
+        challengeId: challenge.id,
+        baselineWeight: weightValue,
+        baselinePhotoUri: baselinePhoto,
+        typicalSteps: finalStepGoal - 2000,
+        workoutsPerWeek,
       });
 
       await setSessionUnlocked(true);
       refreshAuth();
     } catch (err: any) {
-      setError(err.message || "Failed to create profile");
+      console.error("Setup error:", err);
+      setError(err.message || "Failed to create your plan");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderProgressDots = () => (
-    <View style={styles.progressContainer}>
-      {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-        <View
-          key={i}
-          style={[styles.progressDot, { backgroundColor: i < step ? theme.primary : theme.backgroundTertiary }]}
-        />
-      ))}
+  const renderProgressBar = () => (
+    <View style={styles.progressBar}>
+      <View style={[styles.progressFill, { width: `${(step / TOTAL_STEPS) * 100}%`, backgroundColor: theme.primary }]} />
     </View>
   );
 
@@ -106,200 +291,500 @@ export default function SetupScreen() {
     switch (step) {
       case 1:
         return (
-          <View style={styles.stepContainer}>
-            <ThemedText style={styles.stepTitle}>What should we call you?</ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-              placeholder="Your name"
-              placeholderTextColor={theme.textSecondary}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              autoFocus
-            />
-            <Button onPress={() => setStep(2)} disabled={!isStep1Valid} style={styles.nextButton}>
-              Continue
-            </Button>
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Let's get started</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>Tell us about yourself</ThemedText>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Name</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="Your name"
+                placeholderTextColor={theme.textSecondary}
+                value={name}
+                onChangeText={setName}
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={[styles.inputGroup, { flex: 1 }]}>
+                <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Age</ThemedText>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                  placeholder="Age"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="number-pad"
+                  value={age}
+                  onChangeText={setAge}
+                />
+              </View>
+              <View style={[styles.inputGroup, { flex: 1.5 }]}>
+                <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Sex</ThemedText>
+                <View style={styles.segmentedControl}>
+                  <Pressable
+                    style={[styles.segment, { backgroundColor: sex === "male" ? theme.primary : theme.backgroundDefault }]}
+                    onPress={() => setSex("male")}
+                  >
+                    <ThemedText style={{ color: sex === "male" ? "#FFF" : theme.text }}>Male</ThemedText>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.segment, { backgroundColor: sex === "female" ? theme.primary : theme.backgroundDefault }]}
+                    onPress={() => setSex("female")}
+                  >
+                    <ThemedText style={{ color: sex === "female" ? "#FFF" : theme.text }}>Female</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Height</ThemedText>
+                <View style={styles.unitToggle}>
+                  <Pressable style={[styles.unitBtn, { backgroundColor: heightUnit === "ft" ? theme.primary : theme.backgroundDefault }]} onPress={() => setHeightUnit("ft")}>
+                    <ThemedText style={{ color: heightUnit === "ft" ? "#FFF" : theme.text, fontSize: 12 }}>ft/in</ThemedText>
+                  </Pressable>
+                  <Pressable style={[styles.unitBtn, { backgroundColor: heightUnit === "cm" ? theme.primary : theme.backgroundDefault }]} onPress={() => setHeightUnit("cm")}>
+                    <ThemedText style={{ color: heightUnit === "cm" ? "#FFF" : theme.text, fontSize: 12 }}>cm</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+              {heightUnit === "ft" ? (
+                <View style={styles.row}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                    placeholder="Feet"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="numeric"
+                    value={heightFeet}
+                    onChangeText={setHeightFeet}
+                  />
+                  <TextInput
+                    style={[styles.input, { flex: 1, backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                    placeholder="Inches"
+                    placeholderTextColor={theme.textSecondary}
+                    keyboardType="numeric"
+                    value={heightInches}
+                    onChangeText={setHeightInches}
+                  />
+                </View>
+              ) : (
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                  placeholder="Height in cm"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="numeric"
+                  value={heightCm}
+                  onChangeText={setHeightCm}
+                />
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Current Weight</ThemedText>
+                <View style={styles.unitToggle}>
+                  <Pressable style={[styles.unitBtn, { backgroundColor: weightUnit === "lbs" ? theme.primary : theme.backgroundDefault }]} onPress={() => setWeightUnit("lbs")}>
+                    <ThemedText style={{ color: weightUnit === "lbs" ? "#FFF" : theme.text, fontSize: 12 }}>lbs</ThemedText>
+                  </Pressable>
+                  <Pressable style={[styles.unitBtn, { backgroundColor: weightUnit === "kg" ? theme.primary : theme.backgroundDefault }]} onPress={() => setWeightUnit("kg")}>
+                    <ThemedText style={{ color: weightUnit === "kg" ? "#FFF" : theme.text, fontSize: 12 }}>kg</ThemedText>
+                  </Pressable>
+                </View>
+              </View>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder={`Weight in ${weightUnit}`}
+                placeholderTextColor={theme.textSecondary}
+                keyboardType="decimal-pad"
+                value={currentWeight}
+                onChangeText={setCurrentWeight}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Create a PIN</ThemedText>
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="PIN (min 4 digits)"
+                placeholderTextColor={theme.textSecondary}
+                secureTextEntry
+                keyboardType="number-pad"
+                maxLength={6}
+                value={password}
+                onChangeText={(t) => { setPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
+              />
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
+                placeholder="Confirm PIN"
+                placeholderTextColor={theme.textSecondary}
+                secureTextEntry
+                keyboardType="number-pad"
+                maxLength={6}
+                value={confirmPassword}
+                onChangeText={(t) => { setConfirmPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
+              />
+            </View>
           </View>
         );
 
       case 2:
         return (
-          <View style={styles.stepContainer}>
-            <ThemedText style={styles.stepTitle}>What's your height?</ThemedText>
-            <View style={styles.unitToggle}>
-              <Pressable
-                style={[styles.unitButton, { backgroundColor: heightUnit === "ft" ? theme.primary : theme.backgroundDefault }]}
-                onPress={() => setHeightUnit("ft")}
-              >
-                <ThemedText style={{ color: heightUnit === "ft" ? "#FFF" : theme.text }}>ft/in</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[styles.unitButton, { backgroundColor: heightUnit === "cm" ? theme.primary : theme.backgroundDefault }]}
-                onPress={() => setHeightUnit("cm")}
-              >
-                <ThemedText style={{ color: heightUnit === "cm" ? "#FFF" : theme.text }}>cm</ThemedText>
-              </Pressable>
-            </View>
-            {heightUnit === "ft" ? (
-              <View style={styles.heightRow}>
-                <TextInput
-                  style={[styles.input, styles.heightInput, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-                  placeholder="Feet"
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="numeric"
-                  value={heightFeet}
-                  onChangeText={setHeightFeet}
-                />
-                <TextInput
-                  style={[styles.input, styles.heightInput, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-                  placeholder="Inches"
-                  placeholderTextColor={theme.textSecondary}
-                  keyboardType="numeric"
-                  value={heightInches}
-                  onChangeText={setHeightInches}
-                />
-              </View>
-            ) : (
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>What's your goal?</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>Set your target weight for this 17-week challenge</ThemedText>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Goal Weight ({weightUnit})</ThemedText>
               <TextInput
                 style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-                placeholder="Height in cm"
+                placeholder={`Goal weight in ${weightUnit}`}
                 placeholderTextColor={theme.textSecondary}
-                keyboardType="numeric"
-                value={heightCm}
-                onChangeText={setHeightCm}
+                keyboardType="decimal-pad"
+                value={goalWeight}
+                onChangeText={setGoalWeight}
               />
-            )}
-            <View style={styles.buttonRow}>
-              <Pressable style={styles.backButton} onPress={() => setStep(1)}>
-                <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
-              </Pressable>
-              <Button onPress={() => setStep(3)} disabled={!isStep2Valid} style={styles.flexButton}>
-                Continue
-              </Button>
             </View>
+
+            {currentWeight && goalWeight ? (
+              <Card style={styles.infoCard}>
+                <ThemedText style={[styles.infoText, { color: theme.textSecondary }]}>
+                  That's {Math.abs(parseFloat(currentWeight) - parseFloat(goalWeight)).toFixed(1)} {weightUnit} to {parseFloat(goalWeight) < parseFloat(currentWeight) ? "lose" : "gain"} over 17 weeks
+                </ThemedText>
+              </Card>
+            ) : null}
           </View>
         );
 
       case 3:
         return (
-          <View style={styles.stepContainer}>
-            <ThemedText style={styles.stepTitle}>Current weight?</ThemedText>
-            <View style={styles.unitToggle}>
-              <Pressable
-                style={[styles.unitButton, { backgroundColor: weightUnit === "lbs" ? theme.primary : theme.backgroundDefault }]}
-                onPress={() => setWeightUnit("lbs")}
-              >
-                <ThemedText style={{ color: weightUnit === "lbs" ? "#FFF" : theme.text }}>lbs</ThemedText>
-              </Pressable>
-              <Pressable
-                style={[styles.unitButton, { backgroundColor: weightUnit === "kg" ? theme.primary : theme.backgroundDefault }]}
-                onPress={() => setWeightUnit("kg")}
-              >
-                <ThemedText style={{ color: weightUnit === "kg" ? "#FFF" : theme.text }}>kg</ThemedText>
-              </Pressable>
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Calorie Plan</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>We'll calculate your daily target</ThemedText>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Weekly Weight Loss Pace</ThemedText>
+              {DEFICIT_LEVELS.map(level => (
+                <Pressable
+                  key={level.id}
+                  style={[styles.optionCard, { backgroundColor: theme.backgroundDefault, borderColor: deficitLevel === level.id ? theme.primary : theme.border }]}
+                  onPress={() => setDeficitLevel(level.id)}
+                >
+                  <View style={styles.optionHeader}>
+                    <ThemedText style={styles.optionLabel}>{level.label}</ThemedText>
+                    {deficitLevel === level.id ? <Feather name="check-circle" size={20} color={theme.primary} /> : null}
+                  </View>
+                  <ThemedText style={[styles.optionDesc, { color: theme.textSecondary }]}>{level.desc}</ThemedText>
+                </Pressable>
+              ))}
             </View>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-              placeholder={`Weight in ${weightUnit}`}
-              placeholderTextColor={theme.textSecondary}
-              keyboardType="decimal-pad"
-              value={currentWeight}
-              onChangeText={setCurrentWeight}
-            />
-            <View style={styles.buttonRow}>
-              <Pressable style={styles.backButton} onPress={() => setStep(2)}>
-                <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
-              </Pressable>
-              <Button onPress={() => setStep(4)} disabled={!isStep3Valid} style={styles.flexButton}>
-                Continue
-              </Button>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Activity Level</ThemedText>
+              {ACTIVITY_LEVELS.map(level => (
+                <Pressable
+                  key={level.id}
+                  style={[styles.optionCard, { backgroundColor: theme.backgroundDefault, borderColor: activityLevel === level.id ? theme.primary : theme.border }]}
+                  onPress={() => setActivityLevel(level.id)}
+                >
+                  <View style={styles.optionHeader}>
+                    <ThemedText style={styles.optionLabel}>{level.label}</ThemedText>
+                    {activityLevel === level.id ? <Feather name="check-circle" size={20} color={theme.primary} /> : null}
+                  </View>
+                  <ThemedText style={[styles.optionDesc, { color: theme.textSecondary }]}>{level.desc}</ThemedText>
+                </Pressable>
+              ))}
             </View>
+
+            {tdee > 0 ? (
+              <Card style={styles.tdeeCard}>
+                <View style={styles.tdeeRow}>
+                  <ThemedText style={[styles.tdeeLabel, { color: theme.textSecondary }]}>Estimated TDEE</ThemedText>
+                  <ThemedText style={styles.tdeeValue}>{tdee} cal</ThemedText>
+                </View>
+                <View style={styles.tdeeRow}>
+                  <ThemedText style={[styles.tdeeLabel, { color: theme.textSecondary }]}>Daily Target</ThemedText>
+                  <ThemedText style={[styles.tdeeValue, { color: theme.primary }]}>{targetCalories} cal</ThemedText>
+                </View>
+                <View style={styles.tdeeRow}>
+                  <ThemedText style={[styles.tdeeLabel, { color: theme.textSecondary }]}>Approach</ThemedText>
+                  <ThemedText style={styles.tdeeValue}>{DEFICIT_LEVELS.find(d => d.id === deficitLevel)?.label}</ThemedText>
+                </View>
+                {targetCalories < 1200 ? (
+                  <ThemedText style={[styles.warningText, { color: theme.warning }]}>
+                    Target is below 1200 cal. Consider a less aggressive approach.
+                  </ThemedText>
+                ) : null}
+              </Card>
+            ) : null}
           </View>
         );
 
       case 4:
         return (
-          <View style={styles.stepContainer}>
-            <ThemedText style={styles.stepTitle}>A bit more about you</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-              This helps us calculate your calorie target
-            </ThemedText>
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Workout Plan</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>How do you like to train?</ThemedText>
+
             <View style={styles.inputGroup}>
-              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Age</ThemedText>
-              <TextInput
-                style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-                placeholder="Your age"
-                placeholderTextColor={theme.textSecondary}
-                keyboardType="number-pad"
-                value={age}
-                onChangeText={setAge}
-              />
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Workouts per week</ThemedText>
+              <View style={styles.numberRow}>
+                {[0, 1, 2, 3, 4, 5, 6, 7].map(num => (
+                  <Pressable
+                    key={num}
+                    style={[styles.numberBtn, { backgroundColor: workoutsPerWeek === num ? theme.primary : theme.backgroundDefault }]}
+                    onPress={() => setWorkoutsPerWeek(num)}
+                  >
+                    <ThemedText style={{ color: workoutsPerWeek === num ? "#FFF" : theme.text }}>{num}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
             </View>
+
             <View style={styles.inputGroup}>
-              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Sex</ThemedText>
-              <View style={styles.sexToggle}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Do you run?</ThemedText>
+              <View style={styles.segmentedControl}>
                 <Pressable
-                  style={[styles.sexButton, { backgroundColor: sex === "male" ? theme.primary : theme.backgroundDefault, borderColor: theme.border }]}
-                  onPress={() => setSex("male")}
+                  style={[styles.segment, { backgroundColor: doesRun ? theme.primary : theme.backgroundDefault }]}
+                  onPress={() => setDoesRun(true)}
                 >
-                  <ThemedText style={{ color: sex === "male" ? "#FFF" : theme.text }}>Male</ThemedText>
+                  <ThemedText style={{ color: doesRun ? "#FFF" : theme.text }}>Yes</ThemedText>
                 </Pressable>
                 <Pressable
-                  style={[styles.sexButton, { backgroundColor: sex === "female" ? theme.primary : theme.backgroundDefault, borderColor: theme.border }]}
-                  onPress={() => setSex("female")}
+                  style={[styles.segment, { backgroundColor: !doesRun ? theme.primary : theme.backgroundDefault }]}
+                  onPress={() => { setDoesRun(false); setRunningDaysPerWeek(0); }}
                 >
-                  <ThemedText style={{ color: sex === "female" ? "#FFF" : theme.text }}>Female</ThemedText>
+                  <ThemedText style={{ color: !doesRun ? "#FFF" : theme.text }}>No</ThemedText>
                 </Pressable>
               </View>
             </View>
-            <View style={styles.buttonRow}>
-              <Pressable style={styles.backButton} onPress={() => setStep(3)}>
-                <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
-              </Pressable>
-              <Button onPress={() => setStep(5)} disabled={!isStep4Valid} style={styles.flexButton}>
-                Continue
-              </Button>
+
+            {doesRun ? (
+              <View style={styles.inputGroup}>
+                <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Running days per week</ThemedText>
+                <View style={styles.numberRow}>
+                  {[1, 2, 3, 4, 5, 6, 7].map(num => (
+                    <Pressable
+                      key={num}
+                      style={[styles.numberBtn, { backgroundColor: runningDaysPerWeek === num ? theme.primary : theme.backgroundDefault }]}
+                      onPress={() => setRunningDaysPerWeek(num)}
+                    >
+                      <ThemedText style={{ color: runningDaysPerWeek === num ? "#FFF" : theme.text }}>{num}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Preferred split</ThemedText>
+              <View style={styles.splitGrid}>
+                {SPLIT_OPTIONS.map(split => (
+                  <Pressable
+                    key={split.id}
+                    style={[styles.splitBtn, { backgroundColor: preferredSplit === split.id ? theme.primary : theme.backgroundDefault, borderColor: theme.border }]}
+                    onPress={() => setPreferredSplit(split.id)}
+                  >
+                    <ThemedText style={{ color: preferredSplit === split.id ? "#FFF" : theme.text, fontSize: 13 }}>{split.label}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </View>
         );
 
       case 5:
         return (
-          <View style={styles.stepContainer}>
-            <ThemedText style={styles.stepTitle}>Create a PIN</ThemedText>
-            <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
-              You'll need this to unlock the app
-            </ThemedText>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-              placeholder="PIN (min 4 digits)"
-              placeholderTextColor={theme.textSecondary}
-              secureTextEntry
-              keyboardType="number-pad"
-              maxLength={6}
-              value={password}
-              onChangeText={(t) => { setPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
-            />
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text, borderColor: theme.border }]}
-              placeholder="Confirm PIN"
-              placeholderTextColor={theme.textSecondary}
-              secureTextEntry
-              keyboardType="number-pad"
-              maxLength={6}
-              value={confirmPassword}
-              onChangeText={(t) => { setConfirmPassword(t.replace(/[^0-9]/g, "")); setError(""); }}
-            />
-            {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
-            <View style={styles.buttonRow}>
-              <Pressable style={styles.backButton} onPress={() => setStep(4)}>
-                <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Daily Step Goal</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>How many steps per day do you want to aim for?</ThemedText>
+
+            {STEP_GOALS.map(goal => (
+              <Pressable
+                key={goal.value}
+                style={[styles.optionCard, { backgroundColor: theme.backgroundDefault, borderColor: !useCustomSteps && stepGoal === goal.value ? theme.primary : theme.border }]}
+                onPress={() => { setStepGoal(goal.value); setUseCustomSteps(false); }}
+              >
+                <View style={styles.optionHeader}>
+                  <ThemedText style={styles.optionLabel}>{goal.label} steps</ThemedText>
+                  {!useCustomSteps && stepGoal === goal.value ? <Feather name="check-circle" size={20} color={theme.primary} /> : null}
+                </View>
               </Pressable>
-              <Button onPress={handleComplete} disabled={!isStep5Valid || isLoading} style={styles.flexButton}>
-                {isLoading ? <ActivityIndicator color="#FFF" /> : "Create Account"}
-              </Button>
+            ))}
+
+            <Pressable
+              style={[styles.optionCard, { backgroundColor: theme.backgroundDefault, borderColor: useCustomSteps ? theme.primary : theme.border }]}
+              onPress={() => setUseCustomSteps(true)}
+            >
+              <View style={styles.optionHeader}>
+                <ThemedText style={styles.optionLabel}>Custom</ThemedText>
+                {useCustomSteps ? <Feather name="check-circle" size={20} color={theme.primary} /> : null}
+              </View>
+              {useCustomSteps ? (
+                <TextInput
+                  style={[styles.input, { marginTop: Spacing.sm, backgroundColor: theme.backgroundRoot, color: theme.text, borderColor: theme.border }]}
+                  placeholder="Enter steps"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="number-pad"
+                  value={customStepGoal}
+                  onChangeText={setCustomStepGoal}
+                  autoFocus
+                />
+              ) : null}
+            </Pressable>
+
+            <ThemedText style={[styles.helperText, { color: theme.textSecondary }]}>
+              This helps track daily movement consistency
+            </ThemedText>
+          </View>
+        );
+
+      case 6:
+        return (
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Fasting Setup</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>Optional intermittent fasting schedule</ThemedText>
+
+            <View style={styles.inputGroup}>
+              <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Fasting Type</ThemedText>
+              <View style={styles.fastingGrid}>
+                {FASTING_TYPES.map(type => (
+                  <Pressable
+                    key={type.id}
+                    style={[styles.fastingBtn, { backgroundColor: fastingType === type.id ? theme.primary : theme.backgroundDefault, borderColor: theme.border }]}
+                    onPress={() => setFastingType(type.id)}
+                  >
+                    <ThemedText style={[styles.fastingLabel, { color: fastingType === type.id ? "#FFF" : theme.text }]}>{type.label}</ThemedText>
+                  </Pressable>
+                ))}
+              </View>
             </View>
+
+            {fastingType !== "none" ? (
+              <>
+                <View style={styles.inputGroup}>
+                  <ThemedText style={[styles.inputLabel, { color: theme.textSecondary }]}>Typical Lunch Time</ThemedText>
+                  <View style={styles.timeRow}>
+                    {["11:00", "12:00", "13:00", "14:00"].map(time => (
+                      <Pressable
+                        key={time}
+                        style={[styles.timeBtn, { backgroundColor: lunchTime === time ? theme.primary : theme.backgroundDefault }]}
+                        onPress={() => setLunchTime(time)}
+                      >
+                        <ThemedText style={{ color: lunchTime === time ? "#FFF" : theme.text, fontSize: 13 }}>
+                          {parseInt(time) > 12 ? `${parseInt(time) - 12}PM` : `${parseInt(time)}${parseInt(time) === 12 ? "PM" : "AM"}`}
+                        </ThemedText>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+
+                {eatingWindow ? (
+                  <Card style={styles.windowCard}>
+                    <ThemedText style={[styles.windowLabel, { color: theme.textSecondary }]}>Your Eating Window</ThemedText>
+                    <ThemedText style={styles.windowValue}>{eatingWindow.display}</ThemedText>
+                  </Card>
+                ) : null}
+              </>
+            ) : null}
+          </View>
+        );
+
+      case 7:
+        return (
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Reminder Style</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>How strict should reminders be?</ThemedText>
+
+            {REMINDER_INTENSITIES.map(intensity => (
+              <Pressable
+                key={intensity.id}
+                style={[styles.optionCard, { backgroundColor: theme.backgroundDefault, borderColor: reminderIntensity === intensity.id ? theme.primary : theme.border }]}
+                onPress={() => setReminderIntensity(intensity.id)}
+              >
+                <View style={styles.optionHeader}>
+                  <ThemedText style={styles.optionLabel}>{intensity.label}</ThemedText>
+                  {reminderIntensity === intensity.id ? <Feather name="check-circle" size={20} color={theme.primary} /> : null}
+                </View>
+                <ThemedText style={[styles.optionDesc, { color: theme.textSecondary }]}>{intensity.desc}</ThemedText>
+              </Pressable>
+            ))}
+          </View>
+        );
+
+      case 8:
+        return (
+          <View style={styles.stepContent}>
+            <ThemedText style={styles.stepTitle}>Baseline Photo</ThemedText>
+            <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>Take a starting photo to track your progress (optional)</ThemedText>
+
+            <Pressable style={[styles.photoButton, { borderColor: theme.border }]} onPress={handleTakePhoto}>
+              {baselinePhoto ? (
+                <Image source={{ uri: baselinePhoto }} style={styles.photoPreview} />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Feather name="camera" size={32} color={theme.textSecondary} />
+                  <ThemedText style={[styles.photoText, { color: theme.textSecondary }]}>Tap to take photo</ThemedText>
+                </View>
+              )}
+            </Pressable>
+
+            <ThemedText style={[styles.helperText, { color: theme.textSecondary }]}>
+              You can skip this and add it later
+            </ThemedText>
+          </View>
+        );
+
+      case 9:
+        return (
+          <View style={styles.stepContent}>
+            <View style={styles.summaryHeader}>
+              <Feather name="check-circle" size={48} color={theme.success} />
+              <ThemedText style={styles.summaryTitle}>Your Plan</ThemedText>
+              <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>
+                Challenge begins {startDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              </ThemedText>
+            </View>
+
+            <Card style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Current Weight</ThemedText>
+                <ThemedText style={styles.summaryValue}>{currentWeight} {weightUnit}</ThemedText>
+              </View>
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Goal Weight</ThemedText>
+                <ThemedText style={styles.summaryValue}>{goalWeight} {weightUnit}</ThemedText>
+              </View>
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Daily Calories</ThemedText>
+                <ThemedText style={[styles.summaryValue, { color: theme.primary }]}>{targetCalories} cal</ThemedText>
+              </View>
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Weekly Pace</ThemedText>
+                <ThemedText style={styles.summaryValue}>{DEFICIT_LEVELS.find(d => d.id === deficitLevel)?.lossPerWeek} {weightUnit}/week</ThemedText>
+              </View>
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Workouts/Week</ThemedText>
+                <ThemedText style={styles.summaryValue}>{workoutsPerWeek} ({SPLIT_OPTIONS.find(s => s.id === preferredSplit)?.label})</ThemedText>
+              </View>
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Step Goal</ThemedText>
+                <ThemedText style={styles.summaryValue}>{finalStepGoal.toLocaleString()}/day</ThemedText>
+              </View>
+              {fastingType !== "none" && eatingWindow ? (
+                <View style={styles.summaryRow}>
+                  <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Fasting</ThemedText>
+                  <ThemedText style={styles.summaryValue}>{fastingType.replace("_", ":")} ({eatingWindow.display})</ThemedText>
+                </View>
+              ) : null}
+              <View style={styles.summaryRow}>
+                <ThemedText style={[styles.summaryLabel, { color: theme.textSecondary }]}>Reminders</ThemedText>
+                <ThemedText style={styles.summaryValue}>{REMINDER_INTENSITIES.find(r => r.id === reminderIntensity)?.label}</ThemedText>
+              </View>
+            </Card>
+
+            {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
           </View>
         );
 
@@ -311,63 +796,71 @@ export default function SetupScreen() {
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing["3xl"], paddingBottom: insets.bottom + Spacing.xl }]}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl }]}
     >
-      <Image source={require("../../assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
-      <ThemedText style={styles.title}>Welcome</ThemedText>
-      <ThemedText style={[styles.subtitleTop, { color: theme.textSecondary }]}>
-        Let's create your account
-      </ThemedText>
-      {renderProgressDots()}
+      <View style={styles.header}>
+        <ThemedText style={[styles.stepIndicator, { color: theme.textSecondary }]}>Step {step} of {TOTAL_STEPS}</ThemedText>
+        {renderProgressBar()}
+      </View>
+
       {renderStep()}
+
+      <View style={styles.buttonRow}>
+        {step > 1 ? (
+          <Pressable style={styles.backButton} onPress={() => setStep(step - 1)}>
+            <Feather name="chevron-left" size={20} color={theme.primary} />
+            <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
+          </Pressable>
+        ) : (
+          <View style={styles.backButton} />
+        )}
+        {step < TOTAL_STEPS ? (
+          <Button onPress={() => setStep(step + 1)} disabled={!canContinue()} style={styles.nextButton}>
+            Continue
+          </Button>
+        ) : (
+          <Button onPress={handleComplete} disabled={isLoading} style={styles.nextButton}>
+            {isLoading ? <ActivityIndicator color="#FFF" /> : "Finish Setup"}
+          </Button>
+        )}
+      </View>
     </KeyboardAwareScrollViewCompat>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    alignItems: "center",
     paddingHorizontal: Spacing.xl,
   },
-  logo: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.lg,
-  },
-  title: {
-    ...Typography.largeTitle,
-    marginBottom: Spacing.xs,
-  },
-  subtitleTop: {
-    ...Typography.body,
+  header: {
     marginBottom: Spacing.xl,
+  },
+  stepIndicator: {
+    ...Typography.footnote,
     textAlign: "center",
+    marginBottom: Spacing.sm,
   },
-  subtitle: {
-    ...Typography.body,
-    marginBottom: Spacing.lg,
-    textAlign: "center",
+  progressBar: {
+    height: 4,
+    backgroundColor: "rgba(128,128,128,0.2)",
+    borderRadius: 2,
+    overflow: "hidden",
   },
-  progressContainer: {
-    flexDirection: "row",
-    gap: Spacing.sm,
-    marginBottom: Spacing["2xl"],
+  progressFill: {
+    height: "100%",
+    borderRadius: 2,
   },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  stepContainer: {
-    width: "100%",
+  stepContent: {
+    flex: 1,
     gap: Spacing.lg,
   },
   stepTitle: {
-    ...Typography.title3,
+    ...Typography.title2,
     textAlign: "center",
-    marginBottom: Spacing.sm,
+  },
+  stepDesc: {
+    ...Typography.body,
+    textAlign: "center",
   },
   inputGroup: {
     gap: Spacing.sm,
@@ -375,57 +868,203 @@ const styles = StyleSheet.create({
   inputLabel: {
     ...Typography.subheadline,
   },
+  labelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   input: {
     height: Spacing.inputHeight,
-    borderWidth: 1,
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.lg,
+    borderWidth: 1,
     ...Typography.body,
+  },
+  row: {
+    flexDirection: "row",
+    gap: Spacing.md,
   },
   unitToggle: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: Spacing.sm,
+    gap: Spacing.xs,
   },
-  unitButton: {
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.sm,
+  unitBtn: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.xs,
   },
-  sexToggle: {
+  segmentedControl: {
     flexDirection: "row",
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
-  sexButton: {
+  segment: {
     flex: 1,
     height: Spacing.inputHeight,
     borderRadius: BorderRadius.sm,
-    borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  heightRow: {
+  optionCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+  },
+  optionHeader: {
     flexDirection: "row",
-    gap: Spacing.md,
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  heightInput: {
+  optionLabel: {
+    ...Typography.headline,
+  },
+  optionDesc: {
+    ...Typography.footnote,
+    marginTop: Spacing.xs,
+  },
+  infoCard: {
+    padding: Spacing.md,
+    alignItems: "center",
+  },
+  infoText: {
+    ...Typography.footnote,
+  },
+  tdeeCard: {
+    padding: Spacing.lg,
+  },
+  tdeeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: Spacing.sm,
+  },
+  tdeeLabel: {
+    ...Typography.subheadline,
+  },
+  tdeeValue: {
+    ...Typography.headline,
+  },
+  warningText: {
+    ...Typography.footnote,
+    marginTop: Spacing.sm,
+  },
+  numberRow: {
+    flexDirection: "row",
+    gap: Spacing.xs,
+  },
+  numberBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  splitGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  splitBtn: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+  },
+  fastingGrid: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  fastingBtn: {
     flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+    borderWidth: 1,
   },
-  nextButton: {
-    marginTop: Spacing.lg,
+  fastingLabel: {
+    ...Typography.headline,
+  },
+  timeRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  timeBtn: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    alignItems: "center",
+  },
+  windowCard: {
+    padding: Spacing.lg,
+    alignItems: "center",
+  },
+  windowLabel: {
+    ...Typography.footnote,
+    marginBottom: Spacing.xs,
+  },
+  windowValue: {
+    ...Typography.title3,
+  },
+  helperText: {
+    ...Typography.footnote,
+    textAlign: "center",
+  },
+  photoButton: {
+    height: 200,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    overflow: "hidden",
+  },
+  photoPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  photoText: {
+    ...Typography.footnote,
+  },
+  photoPreview: {
+    width: "100%",
+    height: "100%",
+  },
+  summaryHeader: {
+    alignItems: "center",
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  summaryTitle: {
+    ...Typography.title1,
+  },
+  summaryCard: {
+    padding: Spacing.lg,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.sm,
+  },
+  summaryLabel: {
+    ...Typography.body,
+  },
+  summaryValue: {
+    ...Typography.body,
+    fontWeight: "600",
   },
   buttonRow: {
     flexDirection: "row",
-    gap: Spacing.md,
+    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Spacing.lg,
+    marginTop: Spacing.xl,
   },
   backButton: {
-    paddingHorizontal: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: Spacing.md,
+    minWidth: 80,
   },
-  flexButton: {
+  nextButton: {
     flex: 1,
+    marginLeft: Spacing.lg,
   },
   errorText: {
     color: "#FF3B30",

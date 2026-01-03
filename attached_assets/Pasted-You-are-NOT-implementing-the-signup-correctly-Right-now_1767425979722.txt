@@ -1,0 +1,120 @@
+You are NOT implementing the signup correctly.
+
+Right now “Create Account” only collects: name, height, weight, password.
+That is WRONG for my spec.
+
+I need “Create Account” to be a **multi-step onboarding wizard** that collects ALL plan info up-front, THEN routes to the **Countdown Dashboard** (pre-challenge lock screen) until Monday.
+
+DO THIS:
+
+========================
+1) REPLACE CREATE ACCOUNT FLOW WITH A MULTI-STEP WIZARD
+========================
+When user taps “Create Account”, the flow MUST ask these in order (with Next/Back buttons and a step indicator like “Step 1 of 6”):
+
+STEP 1 — Basic Info (required)
+- Name
+- Age (required)
+- Height (required, ft/in or cm toggle)
+- Current weight (required, lbs/kg toggle)
+- Password/PIN (required) + confirm
+
+STEP 2 — Goal
+- Goal weight (required)
+- Optional target date (optional) OR just keep “17-week challenge” and show pace options
+
+STEP 3 — Calorie Deficit Calculator (required)
+This screen MUST compute a recommended calorie target.
+Inputs:
+- Weekly weight loss goal (slider + presets):
+  - Conservative (0.5 lb/week)
+  - Moderate (1.0 lb/week)
+  - Aggressive (1.5–2.0 lb/week)
+- Activity level selector:
+  Sedentary / Light / Moderate / Very Active
+Outputs (live updating in UI cards):
+- Estimated TDEE (use a standard BMR formula + activity multiplier)
+- Recommended daily calorie target
+- Small “Aggressiveness” label (Conservative/Moderate/Aggressive)
+- Non-judgmental warning if calories are too low (set a safe minimum)
+User must tap “Use This Plan” to confirm target calories.
+
+STEP 4 — Workout Plan (required)
+Ask:
+- Workouts per week (0–7) (required)
+- Do you run? (yes/no)
+  - If yes: running days/week (1–7)
+- Preferred split:
+  Push/Pull/Legs OR Upper/Lower OR Full Body OR Cardio-focused
+Save these preferences to personalize defaults/reminders.
+
+STEP 5 — Fasting Setup (required if fasting enabled)
+Ask:
+- Fasting type (choose one):
+  16:8, 18:6, 20:4   (IMPORTANT: show as “16/8, 18/6, 20/4” if you want that UI)
+- Typical lunch time (required time picker)
+Then:
+- Recommend fasting start/end automatically based on lunch time + fasting type
+  Example: If lunch is 12:00 PM and 16:8 -> recommend eating window 12–8 PM
+- Let user adjust start time manually
+UI requirement:
+- Show a clean 24-hour bar with eating window highlighted, fasting window muted.
+- Save final fasting window.
+
+STEP 6 — Review & Finish (required)
+Show a clean “Plan Summary” screen:
+- Start date (next Monday 00:00 local time)
+- Goal weight
+- Weekly loss goal label (Conservative/Moderate/Aggressive)
+- Target calories/day
+- Workouts per week + split + running days
+- Fasting type + eating window
+Button: “Finish Setup”
+
+After “Finish Setup”:
+- Save everything to SQLite
+- Store password securely (SecureStore)
+- Schedule notifications to START on Monday (not before)
+- Route to the “Challenge Starts In” COUNTDOWN DASHBOARD
+
+========================
+2) AFTER WIZARD, ALWAYS GO TO COUNTDOWN DASHBOARD (PRE-CHALLENGE LOCK)
+========================
+After signup + onboarding is complete:
+- Send user to /pre-challenge countdown screen
+- Block access to all tabs/screens except:
+  - View plan summary
+  - Edit plan (re-open wizard)
+  - Log out/reset
+No logging allowed until Monday.
+
+========================
+3) DATA MODEL MUST STORE THESE FIELDS (NOT JUST GOAL WEIGHT)
+========================
+Persist these (required):
+- name, age, height, currentWeight, units
+- goalWeight
+- activityLevel
+- weeklyLossGoal (value + label)
+- tdeeEstimate
+- targetCalories
+- workoutsPerWeek
+- doesRun, runningDaysPerWeek
+- preferredSplit
+- fastingType
+- lunchTime
+- eatingWindowStart, eatingWindowEnd (or fastingStart/fasingEnd)
+- challengeStartDate (next Monday)
+
+========================
+4) UI REQUIREMENTS
+========================
+- Apple-style stepper wizard (progress indicator)
+- Minimalist cards, segmented controls, sliders
+- Clean review screen
+- Validation: user cannot continue if required fields missing
+
+========================
+DELIVERABLE
+========================
+Implement the above EXACTLY: multi-step Create Account wizard collecting all plan info, saving it, then routing to the countdown dashboard.
