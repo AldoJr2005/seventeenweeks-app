@@ -31,11 +31,16 @@ function AppContent() {
     );
   }
 
+  // Show login screen for returning users who clicked "Login" from setup
+  if (isLoggedOut && profile) {
+    return <LoginScreen />;
+  }
+
   if (needsSetup) {
     return <SetupScreen />;
   }
 
-  if (isLoggedOut || (profile?.requirePasswordOnOpen && !isUnlocked)) {
+  if (profile?.requirePasswordOnOpen && !isUnlocked) {
     return <LoginScreen />;
   }
 
