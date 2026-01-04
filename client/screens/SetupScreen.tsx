@@ -1221,7 +1221,8 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.lg,
   },
   nextButtonNarrow: {
-    width: "45%",
+    flex: 1,
+    maxWidth: "65%",
     marginLeft: Spacing.lg,
   },
   errorText: {
