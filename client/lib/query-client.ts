@@ -15,14 +15,8 @@ import { Platform } from "react-native";
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
-  let host = process.env.EXPO_PUBLIC_DOMAIN;
-
-  // Default: use Mac's IP for iOS device builds, localhost for simulator/web
-  if (!host) {
-    // For iOS physical devices, use your Mac's IP address (change 192.168.4.22 to your Mac's IP if needed)
-    // For simulator/web, use localhost
-    host = Platform.OS === "ios" ? "192.168.4.22:5000" : "localhost:5000";
-  }
+  // Use deployed backend on Render
+  const host = process.env.EXPO_PUBLIC_DOMAIN || "seventeenweeks-app.onrender.com";
 
   // Use http for localhost/local IP, https for everything else (deployed backends)
   const protocol = host.includes("localhost") || host.includes("127.0.0.1") || host.startsWith("192.168.") ? "http" : "https";

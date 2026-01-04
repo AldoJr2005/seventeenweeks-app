@@ -316,6 +316,7 @@ export default function SetupScreen() {
     } catch (err: any) {
       console.error("Setup error:", err);
       const errorMessage = err?.message || err?.toString() || "Failed to create your plan. Please check your connection and try again.";
+      console.error("Full error details:", JSON.stringify(err, null, 2));
       setError(errorMessage);
     } finally {
       setIsLoading(false);
