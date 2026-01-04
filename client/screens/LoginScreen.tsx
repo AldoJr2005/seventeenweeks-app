@@ -182,7 +182,11 @@ export default function LoginScreen() {
       const result = await api.profile.resetPassword(resetToken, newPasswordHash);
       
       if (result.success) {
-        // PIN reset successful - close modal and refresh profile
+        // Invalidate profile cache and refetch to get the updated PIN hash FIRST
+        await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+        
+        // Close modal and clear state AFTER refetch
         setShowForgotModal(false);
         setForgotStep("chooseMethod");
         setResetMethod(null);
@@ -191,10 +195,6 @@ export default function LoginScreen() {
         setNewPin("");
         setConfirmNewPin("");
         setResetError("");
-        
-        // Invalidate profile cache and refetch to get the updated PIN hash
-        await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-        await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
         
         // Refresh the auth state
         refreshAuth();
