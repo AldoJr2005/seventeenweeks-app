@@ -10,6 +10,7 @@ export type ChallengeStatus = typeof CHALLENGE_STATUS[number];
 // Challenge table - stores the 17-week challenge configuration
 export const challenges = pgTable("challenges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => userProfiles.id).notNull(),
   status: varchar("status", { length: 20 }).notNull().default("PRE_CHALLENGE"),
   startDate: date("start_date").notNull(),
   startWeight: real("start_weight").notNull(),

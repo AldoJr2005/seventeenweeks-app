@@ -155,6 +155,7 @@ export default function OnboardingScreen() {
 
     try {
       const challengeData = {
+        userId: profile.id,
         status: "PRE_CHALLENGE",
         startDate,
         startWeight: parseFloat(baselineWeight) || profile.currentWeight || 0,
@@ -199,6 +200,10 @@ export default function OnboardingScreen() {
         id: profile.id,
         data: { onboardingComplete: true },
       });
+      
+      // Set active profile after onboarding
+      const { setActiveProfileId } = await import("@/lib/auth");
+      await setActiveProfileId(profile.id);
     } catch (error) {
       console.error("Failed to complete onboarding:", error);
       Alert.alert("Error", "Failed to save your plan. Please try again.");
@@ -568,7 +573,8 @@ export default function OnboardingScreen() {
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing["3xl"] + Spacing["2xl"] }]}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: Math.max(insets.bottom + Spacing["3xl"] * 2, 120) }]}
+      extraScrollHeight={80}
     >
       <View style={styles.header}>
         <ThemedText style={[styles.stepIndicator, { color: theme.textSecondary }]}>Step {step} of {TOTAL_STEPS}</ThemedText>

@@ -5,6 +5,7 @@ import { getApiUrl } from "./query-client";
 
 const SESSION_KEY = "app_session_unlocked";
 const SESSION_TIMESTAMP_KEY = "app_session_timestamp";
+const ACTIVE_PROFILE_ID_KEY = "active_profile_id";
 
 export async function hashPassword(password: string): Promise<string> {
   const digest = await Crypto.digestStringAsync(
@@ -87,6 +88,45 @@ export async function isSessionUnlocked(autoLockMinutes: number | null): Promise
 
 export async function clearSession(): Promise<void> {
   await setSessionUnlocked(false);
+}
+
+export async function getActiveProfileId(): Promise<string | null> {
+  if (Platform.OS === "web") {
+    if (typeof localStorage !== "undefined") {
+      return localStorage.getItem(ACTIVE_PROFILE_ID_KEY);
+    }
+    return null;
+  }
+  
+  try {
+    return await SecureStore.getItemAsync(ACTIVE_PROFILE_ID_KEY);
+  } catch (error) {
+    console.error("SecureStore error:", error);
+    return null;
+  }
+}
+
+export async function setActiveProfileId(profileId: string | null): Promise<void> {
+  if (Platform.OS === "web") {
+    if (typeof localStorage !== "undefined") {
+      if (profileId) {
+        localStorage.setItem(ACTIVE_PROFILE_ID_KEY, profileId);
+      } else {
+        localStorage.removeItem(ACTIVE_PROFILE_ID_KEY);
+      }
+    }
+    return;
+  }
+  
+  try {
+    if (profileId) {
+      await SecureStore.setItemAsync(ACTIVE_PROFILE_ID_KEY, profileId);
+    } else {
+      await SecureStore.deleteItemAsync(ACTIVE_PROFILE_ID_KEY);
+    }
+  } catch (error) {
+    console.error("SecureStore error:", error);
+  }
 }
 
 export async function verifyPasswordOnServer(password: string): Promise<boolean> {

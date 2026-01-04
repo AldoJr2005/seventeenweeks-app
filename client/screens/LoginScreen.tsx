@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, TextInput, Image, ActivityIndicator, Modal, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -10,12 +10,12 @@ import { Button } from "@/components/Button";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
-import { hashPassword, setSessionUnlocked } from "@/lib/auth";
+import { hashPassword, setSessionUnlocked, setActiveProfileId, getActiveProfileId } from "@/lib/auth";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
-  const { profile, unlock, resetApp, startNewAccount, refreshAuth } = useAuth();
+  const { profile, unlock, resetApp, startNewAccount, refreshAuth, isLoggedOut, logout } = useAuth();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -26,8 +26,41 @@ export default function LoginScreen() {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [showNewAccountModal, setShowNewAccountModal] = useState(false);
   const [newAccountConfirmText, setNewAccountConfirmText] = useState("");
+  const [showAccountSelection, setShowAccountSelection] = useState(false);
+  const [allProfiles, setAllProfiles] = useState<any[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
 
-  const hasLocalProfile = !!profile;
+  const hasLocalProfile = !!profile && !isLoggedOut;
+
+  const loadAllProfiles = async () => {
+    setLoadingProfiles(true);
+    try {
+      const profiles = await api.profile.getAll();
+      setAllProfiles(profiles || []);
+      setShowAccountSelection((profiles || []).length > 0);
+    } catch (err) {
+      console.error("Failed to load profiles:", err);
+      setAllProfiles([]);
+      setShowAccountSelection(false);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedOut) {
+      loadAllProfiles();
+    }
+  }, [isLoggedOut]);
+
+  const handleSelectAccount = async (selectedProfile: any) => {
+    setUsername(selectedProfile.username || "");
+    setShowAccountSelection(false);
+  };
+
+  const handleLoginWithDifferentAccount = async () => {
+    await logout(); // This clears the session and shows the username/PIN login form
+  };
 
   const handleUnlock = async () => {
     if (!password) return;
@@ -55,7 +88,8 @@ export default function LoginScreen() {
       const passwordHash = await hashPassword(password);
       const result = await api.profile.login(username, passwordHash);
 
-      if (result.success) {
+      if (result.success && result.profileId) {
+        await setActiveProfileId(result.profileId);
         await setSessionUnlocked(true);
         refreshAuth();
       } else {
@@ -122,11 +156,51 @@ export default function LoginScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Image source={require("../../assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
-      <ThemedText style={[styles.tagline, { color: theme.textSecondary }]}>
-        Transform your body in 17 weeks
-      </ThemedText>
       
-      {hasLocalProfile ? (
+      {showAccountSelection && allProfiles.length > 0 ? (
+        <>
+          <ThemedText style={styles.greeting}>Select Account</ThemedText>
+          <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Choose an account to login
+          </ThemedText>
+          
+          <View style={styles.formContainer}>
+            {loadingProfiles ? (
+              <ActivityIndicator size="large" color={theme.primary} />
+            ) : (
+              <>
+                {allProfiles.map((p) => (
+                  <Pressable
+                    key={p.id}
+                    style={[styles.accountCard, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}
+                    onPress={() => handleSelectAccount(p)}
+                  >
+                    <View style={styles.accountInfo}>
+                      <ThemedText style={styles.accountName}>{p.name}</ThemedText>
+                      {p.username ? (
+                        <ThemedText style={[styles.accountUsername, { color: theme.textSecondary }]}>@{p.username}</ThemedText>
+                      ) : null}
+                    </View>
+                    <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+                  </Pressable>
+                ))}
+                
+                <View style={styles.dividerContainer}>
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                  <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                </View>
+
+                <Pressable style={styles.newAccountButton} onPress={() => { setShowAccountSelection(false); startNewAccount(); }}>
+                  <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
+                    Create New Account
+                  </ThemedText>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </>
+      ) : hasLocalProfile ? (
         <>
           <ThemedText style={styles.greeting}>Hi, {userName}</ThemedText>
           {userUsername ? (
@@ -167,6 +241,12 @@ export default function LoginScreen() {
               <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
               <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
             </View>
+
+            <Pressable style={styles.newAccountButton} onPress={handleLoginWithDifferentAccount}>
+              <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
+                Login with Different Account
+              </ThemedText>
+            </Pressable>
 
             <Pressable style={styles.newAccountButton} onPress={() => startNewAccount()}>
               <ThemedText style={[styles.newAccountText, { color: theme.primary }]}>
@@ -348,7 +428,7 @@ export default function LoginScreen() {
       <View style={styles.signatureContainer}>
         <Image
           source={require("../../assets/images/signature.png")}
-          style={[styles.signature, { opacity: isDark ? 0.5 : 0.3, tintColor: isDark ? "#FFFFFF" : "#000000" }]}
+          style={[styles.signature, { tintColor: "#000000" }]}
           resizeMode="contain"
         />
       </View>
@@ -366,13 +446,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: BorderRadius.xl,
-    marginBottom: Spacing.md,
-  },
-  tagline: {
-    ...Typography.subheadline,
-    textAlign: "center",
-    marginBottom: Spacing["2xl"],
-    fontWeight: "400",
+    marginBottom: Spacing.xl,
   },
   greeting: {
     ...Typography.largeTitle,
@@ -506,5 +580,24 @@ const styles = StyleSheet.create({
   signature: {
     width: 350,
     height: 110,
+  },
+  accountCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.md,
+  },
+  accountInfo: {
+    flex: 1,
+  },
+  accountName: {
+    ...Typography.headline,
+    marginBottom: Spacing.xs / 2,
+  },
+  accountUsername: {
+    ...Typography.footnote,
   },
 });

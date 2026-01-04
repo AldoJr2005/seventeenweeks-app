@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { useProfile, useVerifyPassword, useDeleteProfile } from "@/hooks/useProfile";
-import { hashPassword, setSessionUnlocked, isSessionUnlocked, clearSession } from "@/lib/auth";
+import { hashPassword, setSessionUnlocked, isSessionUnlocked, clearSession, setActiveProfileId, getActiveProfileId } from "@/lib/auth";
 import type { UserProfile } from "@shared/schema";
 
 interface AuthContextType {
@@ -58,7 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       const passwordHash = await hashPassword(password);
-      const result = await verifyPassword.mutateAsync(passwordHash);
+      const activeProfileId = await getActiveProfileId();
+      const result = await verifyPassword.mutateAsync(activeProfileId ? { passwordHash, profileId: activeProfileId } : passwordHash);
       
       if (result.valid) {
         await setSessionUnlocked(true);
@@ -79,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await clearSession();
+    await clearSession(); // This clears session and active profile ID
     setIsUnlocked(false);
     setIsLoggedOut(true);
   }, []);

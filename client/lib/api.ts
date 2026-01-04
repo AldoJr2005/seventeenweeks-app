@@ -33,6 +33,7 @@ async function apiRequest<T>(method: string, route: string, data?: unknown): Pro
 export const api = {
   challenge: {
     get: () => fetchApi<Challenge | null>("/api/challenge"),
+    getByUserId: (userId: string) => fetchApi<Challenge | null>(`/api/challenge?userId=${userId}`),
     create: (data: InsertChallenge) => apiRequest<Challenge>("POST", "/api/challenge", data),
     update: (id: string, data: Partial<InsertChallenge>) => apiRequest<Challenge>("PATCH", `/api/challenge/${id}`, data),
   },
@@ -80,11 +81,18 @@ export const api = {
   
   profile: {
     get: () => fetchApi<UserProfile | null>("/api/profile"),
+    getById: (id: string) => fetchApi<UserProfile | null>(`/api/profile?profileId=${id}`),
+    getAll: () => fetchApi<UserProfile[]>("/api/profiles"),
     create: (data: InsertUserProfile) => apiRequest<UserProfile>("POST", "/api/profile", data),
     update: (id: string, data: Partial<InsertUserProfile>) => apiRequest<UserProfile>("PATCH", `/api/profile/${id}`, data),
     delete: (id: string) => apiRequest<void>("DELETE", `/api/profile/${id}`),
-    verifyPassword: (passwordHash: string) => apiRequest<{ valid: boolean }>("POST", "/api/profile/verify-password", { passwordHash }),
-    login: (username: string, passwordHash: string) => apiRequest<{ success: boolean; message?: string }>("POST", "/api/profile/login", { username, passwordHash }),
+    verifyPassword: (data: string | { passwordHash: string; profileId: string }) => {
+      if (typeof data === "string") {
+        return apiRequest<{ valid: boolean }>("POST", "/api/profile/verify-password", { passwordHash: data });
+      }
+      return apiRequest<{ valid: boolean }>("POST", "/api/profile/verify-password", data);
+    },
+    login: (username: string, passwordHash: string) => apiRequest<{ success: boolean; message?: string; profileId?: string }>("POST", "/api/profile/login", { username, passwordHash }),
   },
 
   baselineSnapshots: {

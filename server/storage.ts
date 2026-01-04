@@ -58,10 +58,16 @@ export interface IStorage {
   
   // User Profile
   getUserProfile(): Promise<UserProfile | undefined>;
+  getUserProfileById(id: string): Promise<UserProfile | undefined>;
   getUserProfileByUsername(username: string): Promise<UserProfile | undefined>;
+  getAllUserProfiles(): Promise<UserProfile[]>;
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateUserProfile(id: string, profile: Partial<InsertUserProfile>): Promise<UserProfile | undefined>;
   deleteUserProfile(id: string): Promise<void>;
+  
+  // Challenge
+  getChallenge(): Promise<Challenge | undefined>;
+  getChallengeByUserId(userId: string): Promise<Challenge | undefined>;
   
   // App Settings
   getAppSettings(): Promise<AppSettings | undefined>;
@@ -94,6 +100,14 @@ export class DatabaseStorage implements IStorage {
   // Challenge
   async getChallenge(): Promise<Challenge | undefined> {
     const [challenge] = await db.select().from(challenges).orderBy(desc(challenges.createdAt)).limit(1);
+    return challenge || undefined;
+  }
+
+  async getChallengeByUserId(userId: string): Promise<Challenge | undefined> {
+    const [challenge] = await db.select().from(challenges)
+      .where(eq(challenges.userId, userId))
+      .orderBy(desc(challenges.createdAt))
+      .limit(1);
     return challenge || undefined;
   }
 
@@ -223,9 +237,18 @@ export class DatabaseStorage implements IStorage {
     return profile || undefined;
   }
 
+  async getUserProfileById(id: string): Promise<UserProfile | undefined> {
+    const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.id, id));
+    return profile || undefined;
+  }
+
   async getUserProfileByUsername(username: string): Promise<UserProfile | undefined> {
     const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.username, username));
     return profile || undefined;
+  }
+
+  async getAllUserProfiles(): Promise<UserProfile[]> {
+    return db.select().from(userProfiles).orderBy(desc(userProfiles.createdAt));
   }
 
   async createUserProfile(profile: InsertUserProfile): Promise<UserProfile> {

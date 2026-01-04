@@ -14,7 +14,7 @@ import { useCreateProfile } from "@/hooks/useProfile";
 import { useCreateChallenge } from "@/hooks/useChallenge";
 import { useCreateBaselineSnapshot } from "@/hooks/useBaseline";
 import { useAuth } from "@/contexts/AuthContext";
-import { hashPassword, setSessionUnlocked } from "@/lib/auth";
+import { hashPassword, setSessionUnlocked, setActiveProfileId } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { getUpcomingMonday, formatDate } from "@/lib/date-utils";
 import { calculateTDEE, calculateCalorieTarget } from "@/lib/tdee-utils";
@@ -270,6 +270,7 @@ export default function SetupScreen() {
       });
 
       const challenge = await createChallenge.mutateAsync({
+        userId: profile.id,
         status: "PRE_CHALLENGE",
         startDate: startDateFormatted,
         startWeight: weightValue,
@@ -944,7 +945,7 @@ export default function SetupScreen() {
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: Math.max(insets.bottom + Spacing["3xl"] * 2, 120) }]}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: Math.max(insets.bottom + Spacing["3xl"] * 3, 160) }]}
       showsVerticalScrollIndicator={false}
       extraScrollHeight={80}
     >
@@ -999,8 +1000,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   stepContent: {
-    flex: 1,
     gap: Spacing.lg,
+    minHeight: 0,
   },
   stepTitle: {
     ...Typography.title2,
@@ -1206,8 +1207,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.lg,
+    marginTop: Spacing["2xl"],
+    marginBottom: Spacing.xl,
   },
   backButton: {
     flexDirection: "row",

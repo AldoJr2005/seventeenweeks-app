@@ -13,6 +13,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Challenge routes
   app.get("/api/challenge", async (req, res) => {
     try {
+      const userId = req.query.userId as string | undefined;
+      if (userId) {
+        const challenge = await storage.getChallengeByUserId(userId);
+        return res.json(challenge || null);
+      }
       const challenge = await storage.getChallenge();
       res.json(challenge || null);
     } catch (error) {
@@ -303,10 +308,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User profile routes
   app.get("/api/profile", async (req, res) => {
     try {
+      const profileId = req.query.profileId as string | undefined;
+      if (profileId) {
+        const profile = await storage.getUserProfileById(profileId);
+        return res.json(profile || null);
+      }
       const profile = await storage.getUserProfile();
       res.json(profile || null);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.get("/api/profiles", async (req, res) => {
+    try {
+      const profiles = await storage.getAllUserProfiles();
+      res.json(profiles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch profiles" });
     }
   });
 
@@ -344,8 +363,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/profile/verify-password", async (req, res) => {
     try {
-      const { passwordHash } = req.body;
-      const profile = await storage.getUserProfile();
+      const { passwordHash, profileId } = req.body;
+      let profile;
+      if (profileId) {
+        profile = await storage.getUserProfileById(profileId);
+      } else {
+        profile = await storage.getUserProfile();
+      }
       if (!profile) {
         return res.status(404).json({ error: "No profile found" });
       }
@@ -370,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isValid) {
         return res.json({ success: false, message: "Incorrect PIN" });
       }
-      res.json({ success: true });
+      res.json({ success: true, profileId: profile.id });
     } catch (error) {
       res.status(500).json({ success: false, message: "Login failed" });
     }

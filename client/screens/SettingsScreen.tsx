@@ -452,7 +452,7 @@ export default function SettingsScreen() {
       <View style={styles.signatureContainer}>
         <Image
           source={require("../../assets/images/signature.png")}
-          style={[styles.signature, { opacity: isDark ? 0.5 : 0.3, tintColor: isDark ? "#FFFFFF" : "#000000" }]}
+          style={[styles.signature, { tintColor: "#000000" }]}
           resizeMode="contain"
         />
       </View>

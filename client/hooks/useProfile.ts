@@ -1,10 +1,26 @@
+import * as React from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { getActiveProfileId } from "@/lib/auth";
 import type { InsertUserProfile, UserProfile } from "@shared/schema";
 
 export function useProfile() {
+  const [profileId, setProfileId] = React.useState<string | null>(null);
+  
+  React.useEffect(() => {
+    getActiveProfileId().then(setProfileId);
+  }, []);
+  
   return useQuery<UserProfile | null>({
-    queryKey: ["/api/profile"],
+    queryKey: ["/api/profile", profileId],
+    queryFn: async () => {
+      const id = await getActiveProfileId();
+      if (id) {
+        return api.profile.getById(id);
+      }
+      return api.profile.get();
+    },
+    enabled: profileId !== undefined,
   });
 }
 
@@ -43,6 +59,11 @@ export function useDeleteProfile() {
 
 export function useVerifyPassword() {
   return useMutation({
-    mutationFn: (passwordHash: string) => api.profile.verifyPassword(passwordHash),
+    mutationFn: async (data: string | { passwordHash: string; profileId: string }) => {
+      if (typeof data === "string") {
+        return api.profile.verifyPassword(data);
+      }
+      return api.profile.verifyPassword(data.passwordHash, data.profileId);
+    },
   });
 }
