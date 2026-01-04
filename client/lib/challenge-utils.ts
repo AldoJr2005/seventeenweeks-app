@@ -65,8 +65,8 @@ export function getChallengeStatus(startDateStr: string): ChallengeStatus {
 }
 
 export function getCurrentWeekNumber(startDateStr: string): number {
-  // TEMPORARY: Return week 2 for testing
-  return 2;
+  // TEMPORARY: Return week 3 for testing
+  return 3;
   
   // Original code (commented out temporarily):
   // const startDate = new Date(startDateStr + "T00:00:00");

@@ -47,8 +47,8 @@ export function getWeekNumber(startDate: string, currentDate: string): number {
 }
 
 export function getCurrentWeekNumber(startDate: string): number {
-  // TEMPORARY: Return week 2 for testing
-  return 2;
+  // TEMPORARY: Return week 3 for testing
+  return 3;
   
   // Original code (commented out temporarily):
   // return getWeekNumber(startDate, getToday());
