@@ -11,11 +11,13 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { useAuth } from "@/contexts/AuthContext";
 import { api } from "@/lib/api";
 import { hashPassword, setSessionUnlocked, setActiveProfileId, getActiveProfileId } from "@/lib/auth";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const { profile, unlock, resetApp, startNewAccount, refreshAuth, isLoggedOut, logout } = useAuth();
+  const queryClient = useQueryClient();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -180,7 +182,7 @@ export default function LoginScreen() {
       const result = await api.profile.resetPassword(resetToken, newPasswordHash);
       
       if (result.success) {
-        // PIN reset successful - close modal and show success
+        // PIN reset successful - close modal and refresh profile
         setShowForgotModal(false);
         setForgotStep("chooseMethod");
         setResetMethod(null);
@@ -189,7 +191,17 @@ export default function LoginScreen() {
         setNewPin("");
         setConfirmNewPin("");
         setResetError("");
-        Alert.alert("Success", "Your PIN has been reset. You can now login with your new PIN.");
+        
+        // Invalidate profile cache to force refresh from server
+        await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        
+        // Wait a moment for the cache to clear, then refresh
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Refresh the profile to get the updated PIN hash
+        refreshAuth();
+        
+        Alert.alert("Success", "Your PIN has been reset. You can now unlock with your new PIN.");
       } else {
         setResetError(result.error || "Failed to reset PIN");
       }
