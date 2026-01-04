@@ -397,13 +397,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, error: `No account found with username: ${username}` });
       }
 
-      // Delete the profile (this will cascade delete the challenge due to foreign key)
+      // Delete all data associated with this profile's challenges first
+      const userChallenges = await storage.getChallengeByUserId(profile.id);
+      if (userChallenges) {
+        await db.delete(foodEntries).where(eq(foodEntries.challengeId, userChallenges.id));
+        await db.delete(dayLogs).where(eq(dayLogs.challengeId, userChallenges.id));
+        await db.delete(workoutLogs).where(eq(workoutLogs.challengeId, userChallenges.id));
+        await db.delete(habitLogs).where(eq(habitLogs.challengeId, userChallenges.id));
+        await db.delete(weeklyPhotos).where(eq(weeklyPhotos.challengeId, userChallenges.id));
+        await db.delete(weeklyCheckIns).where(eq(weeklyCheckIns.challengeId, userChallenges.id));
+        await db.delete(baselineSnapshots).where(eq(baselineSnapshots.challengeId, userChallenges.id));
+        await db.delete(weeklyReflections).where(eq(weeklyReflections.challengeId, userChallenges.id));
+        await db.delete(challenges).where(eq(challenges.id, userChallenges.id));
+      }
+
+      // Delete the profile
       await storage.deleteUserProfile(profile.id);
       
       res.json({ success: true, message: `Account for username "${username}" has been deleted. User can now go through setup again.` });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Reset account error:", error);
-      res.status(500).json({ success: false, error: "Failed to reset account" });
+      res.status(500).json({ success: false, error: error.message || "Failed to reset account" });
     }
   });
 
