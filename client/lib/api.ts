@@ -14,10 +14,23 @@ import type {
 
 const BASE_URL = getApiUrl();
 
+// Timeout helper (5 seconds)
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 5000): Promise<Response> {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+    ),
+  ]);
+}
+
 async function fetchApi<T>(endpoint: string): Promise<T> {
   const url = new URL(endpoint, BASE_URL);
-  const response = await fetch(url.toString());
+  const response = await fetchWithTimeout(url.toString(), {}, 5000); // 5 second timeout
   if (!response.ok) {
+    if (response.status === 404 && endpoint.includes("/api/profiles")) {
+      return [] as T;
+    }
     throw new Error(`API error: ${response.status}`);
   }
   return response.json();
@@ -93,6 +106,8 @@ export const api = {
       return apiRequest<{ valid: boolean }>("POST", "/api/profile/verify-password", data);
     },
     login: (username: string, passwordHash: string) => apiRequest<{ success: boolean; message?: string; profileId?: string }>("POST", "/api/profile/login", { username, passwordHash }),
+    verifyResetContact: (username: string, email: string | undefined, phone: string | undefined) => apiRequest<{ success: boolean; error?: string; resetToken?: string }>("POST", "/api/profile/verify-reset-contact", { username, email, phone }),
+    resetPassword: (resetToken: string, newPasswordHash: string) => apiRequest<{ success: boolean; error?: string; profileId?: string }>("POST", "/api/profile/reset-password", { resetToken, newPasswordHash }),
   },
 
   baselineSnapshots: {

@@ -8,6 +8,26 @@ import {
   insertBaselineSnapshotSchema, insertWeeklyReflectionSchema,
   insertFoodEntrySchema
 } from "@shared/schema";
+import crypto from "node:crypto";
+
+// In-memory store for PIN reset tokens (expires after 10 minutes)
+interface ResetTokenData {
+  profileId: string;
+  expiresAt: number;
+  verified: boolean;
+}
+
+const resetTokens = new Map<string, ResetTokenData>();
+
+// Clean up expired tokens every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, data] of resetTokens.entries()) {
+    if (data.expiresAt < now) {
+      resetTokens.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Challenge routes
@@ -417,6 +437,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to change password" });
+    }
+  });
+
+  // Verify email/phone for PIN reset
+  app.post("/api/profile/verify-reset-contact", async (req, res) => {
+    try {
+      const { username, email, phone } = req.body;
+      
+      if (!username) {
+        return res.status(400).json({ success: false, error: "Username is required" });
+      }
+
+      if (!email && !phone) {
+        return res.status(400).json({ success: false, error: "Email or phone is required" });
+      }
+
+      // Find profile by username
+      const profile = await storage.getUserProfileByUsername(username.toLowerCase());
+      if (!profile) {
+        return res.status(404).json({ success: false, error: "No account found with that username" });
+      }
+
+      // Verify email matches (case-insensitive)
+      if (email) {
+        if (!profile.email || profile.email.toLowerCase() !== email.toLowerCase().trim()) {
+          return res.status(400).json({ success: false, error: "Email does not match the account" });
+        }
+      }
+
+      // Verify phone matches (normalize both)
+      if (phone) {
+        const normalizePhone = (p: string) => p.replace(/\D/g, "");
+        if (!profile.phone || normalizePhone(profile.phone) !== normalizePhone(phone)) {
+          return res.status(400).json({ success: false, error: "Phone number does not match the account" });
+        }
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+      
+      // Store token temporarily
+      resetTokens.set(resetToken, {
+        profileId: profile.id,
+        expiresAt,
+        verified: true,
+      });
+
+      res.json({ success: true, resetToken });
+    } catch (error) {
+      console.error("Verify reset contact error:", error);
+      res.status(500).json({ success: false, error: "Failed to verify contact information" });
+    }
+  });
+
+  // Reset password with verified token
+  app.post("/api/profile/reset-password", async (req, res) => {
+    try {
+      const { resetToken, newPasswordHash } = req.body;
+      
+      if (!resetToken || !newPasswordHash) {
+        return res.status(400).json({ success: false, error: "Reset token and new PIN are required" });
+      }
+
+      if (newPasswordHash.length < 4) {
+        return res.status(400).json({ success: false, error: "New PIN must be at least 4 characters" });
+      }
+
+      // Verify token
+      const stored = resetTokens.get(resetToken);
+      if (!stored || !stored.verified) {
+        return res.status(400).json({ success: false, error: "Invalid or expired reset token" });
+      }
+
+      if (stored.expiresAt < Date.now()) {
+        resetTokens.delete(resetToken);
+        return res.status(400).json({ success: false, error: "Reset token has expired. Please start over." });
+      }
+
+      // Reset password
+      await storage.updateUserProfile(stored.profileId, { passwordHash: newPasswordHash });
+      
+      // Clean up reset tokens for this profile
+      for (const [key, data] of resetTokens.entries()) {
+        if (data.profileId === stored.profileId) {
+          resetTokens.delete(key);
+        }
+      }
+
+      res.json({ success: true, profileId: stored.profileId });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({ success: false, error: "Failed to reset password" });
     }
   });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Image, ActivityIndicator, Modal, Pressable } from "react-native";
+import { View, StyleSheet, TextInput, Image, ActivityIndicator, Modal, Pressable, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
@@ -22,8 +22,15 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotStep, setForgotStep] = useState<"recovery" | "reset">("recovery");
-  const [resetConfirmText, setResetConfirmText] = useState("");
+  const [forgotStep, setForgotStep] = useState<"chooseMethod" | "verifyContact" | "newPin">("chooseMethod");
+  const [resetMethod, setResetMethod] = useState<"email" | "phone" | null>(null);
+  const [resetContact, setResetContact] = useState("");
+  const [resetToken, setResetToken] = useState<string | null>(null);
+  const [newPin, setNewPin] = useState("");
+  const [confirmNewPin, setConfirmNewPin] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [showNewAccountModal, setShowNewAccountModal] = useState(false);
   const [newAccountConfirmText, setNewAccountConfirmText] = useState("");
   const [showAccountSelection, setShowAccountSelection] = useState(false);
@@ -48,9 +55,7 @@ export default function LoginScreen() {
   };
 
   useEffect(() => {
-    if (isLoggedOut) {
-      loadAllProfiles();
-    }
+    // Don't auto-load profiles when logged out - user should enter username/PIN manually
   }, [isLoggedOut]);
 
   const handleSelectAccount = async (selectedProfile: any) => {
@@ -59,7 +64,9 @@ export default function LoginScreen() {
   };
 
   const handleLoginWithDifferentAccount = async () => {
+    await setActiveProfileId(null); // Clear the active profile
     await logout(); // This clears the session and shows the username/PIN login form
+    setShowAccountSelection(false); // Don't show account selection
   };
 
   const handleUnlock = async () => {
@@ -91,7 +98,7 @@ export default function LoginScreen() {
       if (result.success && result.profileId) {
         await setActiveProfileId(result.profileId);
         await setSessionUnlocked(true);
-        refreshAuth();
+        refreshAuth(); // This will refetch profile and unlock the app
       } else {
         setError(result.message || "Invalid username or PIN");
         setPassword("");
@@ -105,24 +112,115 @@ export default function LoginScreen() {
     }
   };
 
-  const handleReset = async () => {
-    if (resetConfirmText.toLowerCase() !== "reset") return;
+
+  const handleContinueToVerify = () => {
+    if (!resetMethod) {
+      setResetError("Please select a method");
+      return;
+    }
+    setResetError("");
+    setResetContact("");
+    setForgotStep("verifyContact");
+  };
+
+  const handleVerifyContact = async () => {
+    if (!resetContact || !resetMethod) {
+      setResetError(`Please enter your ${resetMethod === "email" ? "email address" : "phone number"}`);
+      return;
+    }
     
-    await resetApp();
-    setShowForgotModal(false);
-    setForgotStep("recovery");
-    setResetConfirmText("");
+    // Use profile username if available, otherwise use username from state
+    const usernameToUse = (hasLocalProfile && profile?.username) ? profile.username : username;
+    if (!usernameToUse) {
+      setResetError("Username is required");
+      return;
+    }
+    
+    setIsVerifying(true);
+    setResetError("");
+    
+    try {
+      const email = resetMethod === "email" ? resetContact.trim() : undefined;
+      const phone = resetMethod === "phone" ? resetContact.trim() : undefined;
+      
+      const result = await api.profile.verifyResetContact(usernameToUse, email, phone);
+      if (result.success && result.resetToken) {
+        setResetToken(result.resetToken);
+        setForgotStep("newPin");
+      } else {
+        setResetError(result.error || "Contact information does not match");
+      }
+    } catch (err: any) {
+      console.error("Verify contact error:", err);
+      setResetError(err.message || "Contact information does not match. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResetPin = async () => {
+    if (!newPin || newPin.length < 4) {
+      setResetError("PIN must be at least 4 digits");
+      return;
+    }
+    if (newPin !== confirmNewPin) {
+      setResetError("PINs do not match");
+      return;
+    }
+    if (!resetToken) {
+      setResetError("Reset token missing. Please start over.");
+      return;
+    }
+    
+    setIsResetting(true);
+    setResetError("");
+    
+    try {
+      const newPasswordHash = await hashPassword(newPin);
+      const result = await api.profile.resetPassword(resetToken, newPasswordHash);
+      
+      if (result.success) {
+        // PIN reset successful - close modal and show success
+        setShowForgotModal(false);
+        setForgotStep("chooseMethod");
+        setResetMethod(null);
+        setResetContact("");
+        setResetToken(null);
+        setNewPin("");
+        setConfirmNewPin("");
+        setResetError("");
+        Alert.alert("Success", "Your PIN has been reset. You can now login with your new PIN.");
+      } else {
+        setResetError(result.error || "Failed to reset PIN");
+      }
+    } catch (err: any) {
+      console.error("Reset PIN error:", err);
+      setResetError(err.message || "Failed to reset PIN. Please try again.");
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const openForgotModal = () => {
-    setForgotStep(profile?.email || profile?.phone ? "recovery" : "reset");
+    setForgotStep("chooseMethod");
     setShowForgotModal(true);
+    setResetError("");
+    setResetMethod(null);
+    setResetContact("");
+    setResetToken(null);
+    setNewPin("");
+    setConfirmNewPin("");
   };
 
   const closeForgotModal = () => {
     setShowForgotModal(false);
-    setForgotStep("recovery");
-    setResetConfirmText("");
+    setForgotStep("chooseMethod");
+    setResetError("");
+    setResetMethod(null);
+    setResetContact("");
+    setResetToken(null);
+    setNewPin("");
+    setConfirmNewPin("");
   };
 
   const maskEmail = (email: string) => {
@@ -298,6 +396,12 @@ export default function LoginScreen() {
               {isLoading ? <ActivityIndicator color="#FFF" /> : "Login"}
             </Button>
 
+            <Pressable style={styles.forgotButton} onPress={openForgotModal}>
+              <ThemedText style={[styles.forgotText, { color: theme.textSecondary }]}>
+                Forgot PIN?
+              </ThemedText>
+            </Pressable>
+
             <View style={styles.dividerContainer}>
               <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
               <ThemedText style={[styles.dividerText, { color: theme.textSecondary }]}>or</ThemedText>
@@ -316,77 +420,131 @@ export default function LoginScreen() {
       <Modal visible={showForgotModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.backgroundDefault }]}>
-            {forgotStep === "recovery" && (profile?.email || profile?.phone) ? (
+            {forgotStep === "chooseMethod" ? (
               <>
                 <ThemedText style={styles.modalTitle}>Forgot PIN?</ThemedText>
                 <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
-                  Contact recovery information on file:
+                  Where do you want us to send a verification code?
                 </ThemedText>
                 
-                {profile.email ? (
-                  <View style={styles.recoveryItem}>
-                    <Feather name="mail" size={18} color={theme.textSecondary} />
-                    <ThemedText style={[styles.recoveryValue, { color: theme.text }]}>
-                      {maskEmail(profile.email)}
+                {(!hasLocalProfile || !profile) && (
+                  <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
+                    You'll need to enter your username to receive a code.
+                  </ThemedText>
+                )}
+                
+                {(hasLocalProfile && profile?.email) || (!hasLocalProfile) ? (
+                  <Pressable
+                    style={[styles.methodButton, { backgroundColor: resetMethod === "email" ? theme.primary : theme.backgroundSecondary, borderColor: theme.border }]}
+                    onPress={() => setResetMethod("email")}
+                  >
+                    <Feather name="mail" size={20} color={resetMethod === "email" ? theme.buttonText : theme.text} />
+                    <ThemedText style={[styles.methodButtonText, { color: resetMethod === "email" ? theme.buttonText : theme.text }]}>
+                      {hasLocalProfile && profile?.email ? `Email: ${maskEmail(profile.email)}` : "Email"}
                     </ThemedText>
-                  </View>
+                    {resetMethod === "email" && <Feather name="check-circle" size={20} color={theme.buttonText} />}
+                  </Pressable>
                 ) : null}
                 
-                {profile.phone ? (
-                  <View style={styles.recoveryItem}>
-                    <Feather name="phone" size={18} color={theme.textSecondary} />
-                    <ThemedText style={[styles.recoveryValue, { color: theme.text }]}>
-                      {maskPhone(profile.phone)}
+                {(hasLocalProfile && profile?.phone) || (!hasLocalProfile) ? (
+                  <Pressable
+                    style={[styles.methodButton, { backgroundColor: resetMethod === "phone" ? theme.primary : theme.backgroundSecondary, borderColor: theme.border }]}
+                    onPress={() => setResetMethod("phone")}
+                  >
+                    <Feather name="phone" size={20} color={resetMethod === "phone" ? theme.buttonText : theme.text} />
+                    <ThemedText style={[styles.methodButtonText, { color: resetMethod === "phone" ? theme.buttonText : theme.text }]}>
+                      {hasLocalProfile && profile?.phone ? `Phone: ${maskPhone(profile.phone)}` : "Phone"}
                     </ThemedText>
-                  </View>
+                    {resetMethod === "phone" && <Feather name="check-circle" size={20} color={theme.buttonText} />}
+                  </Pressable>
                 ) : null}
                 
-                <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
-                  Use one of these to verify your identity and reset your PIN on a trusted device.
-                </ThemedText>
+                {resetError ? <ThemedText style={styles.errorText}>{resetError}</ThemedText> : null}
                 
-                <View style={styles.modalButtons}>
-                  <Pressable style={styles.cancelButton} onPress={closeForgotModal}>
-                    <ThemedText style={{ color: theme.primary }}>Close</ThemedText>
-                  </Pressable>
-                  <Pressable style={styles.resetLinkButton} onPress={() => setForgotStep("reset")}>
-                    <ThemedText style={[styles.resetLinkText, { color: "#FF3B30" }]}>
-                      Reset App Instead
-                    </ThemedText>
-                  </Pressable>
-                </View>
-              </>
-            ) : (
-              <>
-                <ThemedText style={styles.modalTitle}>Reset App?</ThemedText>
-                <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
-                  This will delete all your data including your profile, challenge progress, photos, and logs. This cannot be undone.
-                </ThemedText>
-                <ThemedText style={[styles.modalText, { color: theme.textSecondary, marginTop: Spacing.md }]}>
-                  Type "reset" to confirm:
-                </ThemedText>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: theme.border }]}
-                  placeholder="Type 'reset'"
-                  placeholderTextColor={theme.textSecondary}
-                  value={resetConfirmText}
-                  onChangeText={setResetConfirmText}
-                  autoCapitalize="none"
-                />
                 <View style={styles.modalButtons}>
                   <Pressable style={styles.cancelButton} onPress={closeForgotModal}>
                     <ThemedText style={{ color: theme.primary }}>Cancel</ThemedText>
                   </Pressable>
                   <Button
-                    onPress={handleReset}
-                    disabled={resetConfirmText.toLowerCase() !== "reset"}
-                    style={[styles.resetButton, { backgroundColor: "#FF3B30" }]}
+                    onPress={handleContinueToVerify}
+                    disabled={!resetMethod}
+                    style={styles.resetPinButton}
                   >
-                    Reset Everything
+                    Continue
                   </Button>
                 </View>
               </>
-            )}
+            ) : forgotStep === "verifyContact" ? (
+              <>
+                <ThemedText style={styles.modalTitle}>Verify Your {resetMethod === "email" ? "Email" : "Phone"}</ThemedText>
+                <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
+                  Enter your {resetMethod === "email" ? "email address" : "phone number"} to verify your account.
+                </ThemedText>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: resetError ? "#FF3B30" : theme.border }]}
+                  placeholder={resetMethod === "email" ? "Enter your email address" : "Enter your phone number"}
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType={resetMethod === "email" ? "email-address" : "phone-pad"}
+                  autoCapitalize={resetMethod === "email" ? "none" : undefined}
+                  value={resetContact}
+                  onChangeText={(t) => { setResetContact(t); setResetError(""); }}
+                  autoFocus
+                />
+                {resetError ? <ThemedText style={styles.errorText}>{resetError}</ThemedText> : null}
+                <View style={styles.modalButtons}>
+                  <Pressable style={styles.cancelButton} onPress={() => { setForgotStep("chooseMethod"); setResetContact(""); setResetError(""); }}>
+                    <ThemedText style={{ color: theme.primary }}>Back</ThemedText>
+                  </Pressable>
+                  <Button
+                    onPress={handleVerifyContact}
+                    disabled={!resetContact || isVerifying}
+                    style={styles.resetPinButton}
+                  >
+                    {isVerifying ? <ActivityIndicator color="#FFF" /> : "Verify"}
+                  </Button>
+                </View>
+              </>
+            ) : forgotStep === "newPin" ? (
+              <>
+                <ThemedText style={styles.modalTitle}>Set New PIN</ThemedText>
+                <ThemedText style={[styles.modalText, { color: theme.textSecondary }]}>
+                  Enter and confirm your new PIN (4-6 digits).
+                </ThemedText>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: resetError && (newPin.length > 0 && newPin.length < 4) ? "#FF3B30" : theme.border }]}
+                  placeholder="New PIN"
+                  placeholderTextColor={theme.textSecondary}
+                  secureTextEntry
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={newPin}
+                  onChangeText={(t) => { setNewPin(t.replace(/[^0-9]/g, "")); setResetError(""); }}
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.backgroundSecondary, color: theme.text, borderColor: resetError && (newPin !== confirmNewPin) ? "#FF3B30" : theme.border }]}
+                  placeholder="Confirm New PIN"
+                  placeholderTextColor={theme.textSecondary}
+                  secureTextEntry
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={confirmNewPin}
+                  onChangeText={(t) => { setConfirmNewPin(t.replace(/[^0-9]/g, "")); setResetError(""); }}
+                />
+                {resetError ? <ThemedText style={styles.errorText}>{resetError}</ThemedText> : null}
+                <View style={styles.modalButtons}>
+                  <Pressable style={styles.cancelButton} onPress={closeForgotModal}>
+                    <ThemedText style={{ color: theme.primary }}>Cancel</ThemedText>
+                  </Pressable>
+                  <Button
+                    onPress={handleResetPin}
+                    disabled={isResetting || !newPin || !confirmNewPin || newPin.length < 4 || newPin !== confirmNewPin}
+                    style={styles.resetPinButton}
+                  >
+                    {isResetting ? <ActivityIndicator color="#FFF" /> : "Reset PIN"}
+                  </Button>
+                </View>
+              </>
+            ) : null}
           </View>
         </View>
       </Modal>
@@ -428,7 +586,7 @@ export default function LoginScreen() {
       <View style={styles.signatureContainer}>
         <Image
           source={require("../../assets/images/signature.png")}
-          style={[styles.signature, { tintColor: "#000000" }]}
+          style={[styles.signature, { tintColor: isDark ? "#FFFFFF" : "#000000" }]}
           resizeMode="contain"
         />
       </View>
@@ -540,14 +698,31 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontFamily: "monospace",
   },
-  resetLinkButton: {
+  methodButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.md,
+    gap: Spacing.md,
+  },
+  methodButtonText: {
+    ...Typography.body,
     flex: 1,
+  },
+  resetLinkButton: {
+    alignSelf: "center",
     paddingVertical: Spacing.md,
     alignItems: "center",
   },
   resetLinkText: {
     ...Typography.footnote,
     fontWeight: "500",
+  },
+  resetPinButton: {
+    flex: 1,
   },
   dividerContainer: {
     flexDirection: "row",
