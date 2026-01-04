@@ -192,13 +192,11 @@ export default function LoginScreen() {
         setConfirmNewPin("");
         setResetError("");
         
-        // Invalidate profile cache to force refresh from server
+        // Invalidate profile cache and refetch to get the updated PIN hash
         await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+        await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
         
-        // Wait a moment for the cache to clear, then refresh
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        // Refresh the profile to get the updated PIN hash
+        // Refresh the auth state
         refreshAuth();
         
         Alert.alert("Success", "Your PIN has been reset. You can now unlock with your new PIN.");
