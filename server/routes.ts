@@ -1,13 +1,16 @@
 import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import { storage } from "./storage";
+import { db } from "./db";
 import {
   insertChallengeSchema, insertDayLogSchema, insertWorkoutLogSchema,
   insertWeeklyPhotoSchema, insertWeeklyCheckInSchema, insertHabitLogSchema,
   insertUserProfileSchema, insertAppSettingsSchema,
   insertBaselineSnapshotSchema, insertWeeklyReflectionSchema,
-  insertFoodEntrySchema
+  insertFoodEntrySchema,
+  challenges, foodEntries, dayLogs, workoutLogs, habitLogs, weeklyPhotos, weeklyCheckIns, baselineSnapshots, weeklyReflections
 } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import crypto from "node:crypto";
 
 // In-memory store for PIN reset tokens (expires after 10 minutes)
