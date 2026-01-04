@@ -1,5 +1,15 @@
 export function getToday(): string {
-  return formatDate(new Date());
+  // TEMPORARY: For testing - set date to match week 4 (started Jan 4, week 4 = Jan 25+)
+  // Week 4 starts on day 22 (3 weeks * 7 = 21 days, so day 22 is start of week 4)
+  // Jan 4 + 21 days = Jan 25
+  const startDate = new Date("2025-01-04"); // Challenge start date
+  const daysOffset = 21; // Start of week 4 (3 weeks * 7 days)
+  const today = new Date(startDate);
+  today.setDate(today.getDate() + daysOffset);
+  return formatDate(today);
+  
+  // Original code (commented out temporarily):
+  // return formatDate(new Date());
 }
 
 export function formatDate(date: Date): string {
@@ -47,8 +57,8 @@ export function getWeekNumber(startDate: string, currentDate: string): number {
 }
 
 export function getCurrentWeekNumber(startDate: string): number {
-  // TEMPORARY: Return week 3 for testing
-  return 3;
+  // TEMPORARY: Return week 4 for testing
+  return 4;
   
   // Original code (commented out temporarily):
   // return getWeekNumber(startDate, getToday());
