@@ -23,6 +23,20 @@ import type { Challenge } from "@shared/schema";
 function AppContent() {
   const { isLoading, needsSetup, isUnlocked, isLoggedOut, profile } = useAuth();
   const { data: challenge, isLoading: challengeLoading } = useChallenge();
+  const [forceUpdate, setForceUpdate] = React.useState(0);
+
+  // TEMPORARY: Force re-render every second to check challenge status during countdown
+  React.useEffect(() => {
+    if (challenge) {
+      const status = getChallengeStatus((challenge as Challenge).startDate);
+      if (status === "PRE_CHALLENGE") {
+        const interval = setInterval(() => {
+          setForceUpdate((prev) => prev + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+      }
+    }
+  }, [challenge, forceUpdate]);
 
   if (isLoading || challengeLoading) {
     return (

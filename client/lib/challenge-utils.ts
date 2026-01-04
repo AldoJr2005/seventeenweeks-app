@@ -29,23 +29,39 @@ export function formatDateYYYYMMDD(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+// TEMPORARY: Store start time for 10-second countdown (must match PreChallengeScreen)
+let tempCountdownStart: number | null = null;
+
 export function getChallengeStatus(startDateStr: string): ChallengeStatus {
-  const startDate = new Date(startDateStr + "T00:00:00");
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  if (today < startDate) {
-    return "PRE_CHALLENGE";
+  // TEMPORARY: For testing, treat challenge as ACTIVE after 10-second countdown
+  const TEMP_SECONDS = 10;
+  if (tempCountdownStart === null) {
+    tempCountdownStart = Date.now() + TEMP_SECONDS * 1000;
+  }
+  const now = Date.now();
+  if (now >= tempCountdownStart) {
+    return "ACTIVE"; // Countdown finished, show home screen
   }
   
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + 17 * 7);
+  // Original code (commented out temporarily):
+  // const startDate = new Date(startDateStr + "T00:00:00");
+  // const now = new Date();
+  // const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // 
+  // if (today < startDate) {
+  //   return "PRE_CHALLENGE";
+  // }
+  // 
+  // const endDate = new Date(startDate);
+  // endDate.setDate(endDate.getDate() + 17 * 7);
+  // 
+  // if (today >= endDate) {
+  //   return "COMPLETED";
+  // }
+  // 
+  // return "ACTIVE";
   
-  if (today >= endDate) {
-    return "COMPLETED";
-  }
-  
-  return "ACTIVE";
+  return "PRE_CHALLENGE"; // Still counting down
 }
 
 export function getCurrentWeekNumber(startDateStr: string): number {
