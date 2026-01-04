@@ -53,7 +53,7 @@ export function Card({
   onPress,
   style,
 }: CardProps) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const scale = useSharedValue(1);
 
   const cardBackgroundColor = getBackgroundColorForElevation(elevation, theme);
@@ -85,6 +85,9 @@ export function Card({
         {
           backgroundColor: cardBackgroundColor,
           ...CardShadow,
+          // Add border in light mode for better visibility
+          borderWidth: isDark ? 0 : 1,
+          borderColor: isDark ? 'transparent' : theme.border,
         },
         animatedStyle,
         style,

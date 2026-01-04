@@ -110,7 +110,7 @@ export const Typography = {
 export const CardShadow = {
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.05,
+  shadowOpacity: 0.08, // Increased from 0.05 for better visibility in light mode
   shadowRadius: 8,
   elevation: 2,
 };
