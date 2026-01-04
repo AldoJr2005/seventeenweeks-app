@@ -16,7 +16,8 @@ import { useCreateBaselineSnapshot } from "@/hooks/useBaseline";
 import { useAuth } from "@/contexts/AuthContext";
 import { hashPassword, setSessionUnlocked, setActiveProfileId } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { getUpcomingMonday, formatDate } from "@/lib/date-utils";
+import { formatDate } from "@/lib/date-utils";
+import { getStartDateForNewChallenge } from "@/lib/challenge-utils";
 import { calculateTDEE, calculateCalorieTarget } from "@/lib/tdee-utils";
 
 const TOTAL_STEPS = 10;
@@ -32,6 +33,7 @@ const DEFICIT_LEVELS = [
   { id: "conservative", lossPerWeek: 0.5, label: "Conservative", desc: "0.5 lb/week - Sustainable" },
   { id: "moderate", lossPerWeek: 1.0, label: "Moderate", desc: "1 lb/week - Recommended" },
   { id: "aggressive", lossPerWeek: 1.5, label: "Aggressive", desc: "1.5 lb/week - Challenging" },
+  { id: "really_aggressive", lossPerWeek: 2.0, label: "Really Aggressive", desc: "2 lbs/week - Very Challenging" },
 ];
 
 const SPLIT_OPTIONS = [
@@ -109,8 +111,7 @@ export default function SetupScreen() {
   const [baselinePhoto, setBaselinePhoto] = useState<string | null>(null);
   const [macroPreset, setMacroPreset] = useState("BALANCED");
 
-  const startDate = getUpcomingMonday();
-  const startDateFormatted = formatDate(startDate);
+  const startDateFormatted = getStartDateForNewChallenge();
 
   const getHeightValue = (): number => {
     if (heightUnit === "ft") {
@@ -888,7 +889,7 @@ export default function SetupScreen() {
               <Feather name="check-circle" size={48} color={theme.success} />
               <ThemedText style={styles.summaryTitle}>Your Plan</ThemedText>
               <ThemedText style={[styles.stepDesc, { color: theme.textSecondary }]}>
-                Challenge begins {startDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                Challenge begins {new Date(startDateFormatted + "T00:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
               </ThemedText>
             </View>
 
@@ -945,7 +946,7 @@ export default function SetupScreen() {
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: Math.max(insets.bottom + Spacing["3xl"] * 3, 160) }]}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl }]}
       showsVerticalScrollIndicator={false}
       extraScrollHeight={80}
     >
@@ -956,7 +957,7 @@ export default function SetupScreen() {
 
       {renderStep()}
 
-      <View style={[styles.buttonRow, step === 1 ? styles.buttonRowCentered : null]}>
+      <View style={[styles.buttonRow, step === 1 ? styles.buttonRowCentered : null, { paddingBottom: Math.max(insets.bottom + 100, 120) }]}>
         {step > 1 ? (
           <Pressable style={styles.backButton} onPress={() => setStep(step - 1)}>
             <Feather name="chevron-left" size={20} color={theme.primary} />
@@ -964,7 +965,7 @@ export default function SetupScreen() {
           </Pressable>
         ) : null}
         {step < TOTAL_STEPS ? (
-          <Button onPress={() => setStep(step + 1)} disabled={!canContinue()} style={step === 1 ? styles.fullWidthButton : styles.nextButton}>
+          <Button onPress={() => setStep(step + 1)} disabled={!canContinue()} style={step === 1 ? styles.fullWidthButton : (step >= 3 && step <= 10 ? styles.nextButtonNarrow : styles.nextButton)}>
             Continue
           </Button>
         ) : (
@@ -1208,7 +1209,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: Spacing["2xl"],
-    marginBottom: Spacing.xl,
   },
   backButton: {
     flexDirection: "row",
@@ -1219,6 +1219,11 @@ const styles = StyleSheet.create({
   nextButton: {
     flex: 1,
     marginLeft: Spacing.lg,
+  },
+  nextButtonNarrow: {
+    maxWidth: "60%",
+    marginLeft: Spacing.lg,
+    flexShrink: 1,
   },
   errorText: {
     color: "#FF3B30",
