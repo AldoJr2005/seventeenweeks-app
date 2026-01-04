@@ -21,10 +21,28 @@ interface PreChallengeScreenProps {
   onEditPlan?: () => void;
 }
 
+// TEMPORARY: Store start time for 10-second countdown
+let tempCountdownStart: number | null = null;
+
 function getTimeRemaining(startDate: string) {
   // TEMPORARY: Set countdown to 10 seconds for testing
   const TEMP_SECONDS = 10;
-  return { days: 0, hours: 0, minutes: 0, seconds: TEMP_SECONDS, total: TEMP_SECONDS * 1000 };
+  if (tempCountdownStart === null) {
+    tempCountdownStart = Date.now() + TEMP_SECONDS * 1000;
+  }
+  const now = Date.now();
+  const diff = tempCountdownStart - now;
+  
+  if (diff <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, total: 0 };
+  }
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  
+  return { days, hours, minutes, seconds, total: diff };
   
   // Original code (commented out temporarily):
   // const start = new Date(startDate + "T00:00:00");
