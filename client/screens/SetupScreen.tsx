@@ -265,7 +265,7 @@ export default function SetupScreen() {
         sex,
         passwordHash,
         requirePasswordOnOpen: true,
-        autoLockMinutes: 5,
+        autoLockMinutes: 1,
         onboardingComplete: false,
       });
 
@@ -944,8 +944,9 @@ export default function SetupScreen() {
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing["3xl"] + Spacing["2xl"] }]}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: Math.max(insets.bottom + Spacing["3xl"] * 2, 120) }]}
       showsVerticalScrollIndicator={false}
+      extraScrollHeight={80}
     >
       <View style={styles.header}>
         <ThemedText style={[styles.stepIndicator, { color: theme.textSecondary }]}>Step {step} of {TOTAL_STEPS}</ThemedText>
