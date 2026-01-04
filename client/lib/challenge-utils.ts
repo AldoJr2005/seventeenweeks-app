@@ -65,15 +65,19 @@ export function getChallengeStatus(startDateStr: string): ChallengeStatus {
 }
 
 export function getCurrentWeekNumber(startDateStr: string): number {
-  const startDate = new Date(startDateStr + "T00:00:00");
-  const now = new Date();
-  const diffMs = now.getTime() - startDate.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  // TEMPORARY: Return week 2 for testing
+  return 2;
   
-  if (diffDays < 0) return 0;
-  
-  const weekNumber = Math.floor(diffDays / 7) + 1;
-  return Math.min(weekNumber, 17);
+  // Original code (commented out temporarily):
+  // const startDate = new Date(startDateStr + "T00:00:00");
+  // const now = new Date();
+  // const diffMs = now.getTime() - startDate.getTime();
+  // const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  // 
+  // if (diffDays < 0) return 0;
+  // 
+  // const weekNumber = Math.floor(diffDays / 7) + 1;
+  // return Math.min(weekNumber, 17);
 }
 
 export function getDayOfChallenge(startDateStr: string): number {
