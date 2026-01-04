@@ -17,6 +17,7 @@ function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origins = new Set<string>();
 
+    // Support Replit domains
     if (process.env.REPLIT_DEV_DOMAIN) {
       origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
     }
@@ -27,9 +28,29 @@ function setupCors(app: express.Application) {
       });
     }
 
+    // Support deployed backend domains (Heroku, Render, etc.)
+    // Set ALLOWED_ORIGINS env var with comma-separated domains (e.g., "https://myapp.herokuapp.com,https://myapp.onrender.com")
+    if (process.env.ALLOWED_ORIGINS) {
+      process.env.ALLOWED_ORIGINS.split(",").forEach((d) => {
+        const domain = d.trim();
+        if (domain) {
+          origins.add(domain.startsWith("http") ? domain : `https://${domain}`);
+        }
+      });
+    }
+
     const origin = req.header("origin");
 
-    if (origin && origins.has(origin)) {
+    // Allow requests from local network (for device testing)
+    const isLocalNetwork = origin && (
+      origin.startsWith("http://192.168.") ||
+      origin.startsWith("http://10.") ||
+      origin.startsWith("http://172.16.") ||
+      origin.startsWith("http://localhost") ||
+      origin.startsWith("http://127.0.0.1")
+    );
+
+    if (origin && (origins.has(origin) || isLocalNetwork)) {
       res.header("Access-Control-Allow-Origin", origin);
       res.header(
         "Access-Control-Allow-Methods",

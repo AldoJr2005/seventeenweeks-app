@@ -315,7 +315,8 @@ export default function SetupScreen() {
       refreshAuth();
     } catch (err: any) {
       console.error("Setup error:", err);
-      setError(err.message || "Failed to create your plan");
+      const errorMessage = err?.message || err?.toString() || "Failed to create your plan. Please check your connection and try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -942,7 +943,7 @@ export default function SetupScreen() {
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
-      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xl }]}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing["3xl"] }]}
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>

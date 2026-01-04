@@ -1,17 +1,32 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { Platform } from "react-native";
 
 /**
- * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
+ * Gets the base URL for the Express API server.
+ * 
+ * For deployed backends (Heroku, Render, etc.), set EXPO_PUBLIC_DOMAIN to your backend URL
+ * (e.g., "myapp.herokuapp.com" or "myapp.onrender.com"). The protocol (http/https) is
+ * automatically determined.
+ * 
+ * For local development, if EXPO_PUBLIC_DOMAIN is not set, it defaults to:
+ * - iOS devices: http://192.168.4.22:5000 (update IP as needed)
+ * - Simulator/web: http://localhost:5000
+ * 
  * @returns {string} The API base URL
  */
 export function getApiUrl(): string {
   let host = process.env.EXPO_PUBLIC_DOMAIN;
 
+  // Default: use Mac's IP for iOS device builds, localhost for simulator/web
   if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+    // For iOS physical devices, use your Mac's IP address (change 192.168.4.22 to your Mac's IP if needed)
+    // For simulator/web, use localhost
+    host = Platform.OS === "ios" ? "192.168.4.22:5000" : "localhost:5000";
   }
 
-  let url = new URL(`https://${host}`);
+  // Use http for localhost/local IP, https for everything else (deployed backends)
+  const protocol = host.includes("localhost") || host.includes("127.0.0.1") || host.startsWith("192.168.") ? "http" : "https";
+  let url = new URL(`${protocol}://${host}`);
 
   return url.href;
 }

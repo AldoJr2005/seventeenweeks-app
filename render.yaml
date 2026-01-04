@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: seventeenweeks-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run server:build
+    startCommand: npm run server:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: PORT
+        value: 10000
+      - key: ALLOWED_ORIGINS
+        sync: false
+

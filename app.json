@@ -10,7 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.seventeenweeks.app",
+      "bundleIdentifier": "com.seventeenweeks.dev",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to take progress photos and scan food barcodes.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photos to select progress photos.",
@@ -22,7 +22,7 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "package": "com.seventeenweeks.app"
+      "package": "com.seventeenweeks.dev"
     },
     "web": {
       "output": "single",

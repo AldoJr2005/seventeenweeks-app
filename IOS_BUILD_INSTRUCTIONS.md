@@ -51,7 +51,7 @@ arch -x86_64 pod install --repo-update
 
 ## App Configuration
 
-- **Bundle ID:** com.seventeenweeks.app
+- **Bundle ID:** com.seventeenweeks.dev
 - **App Name:** 17 WEEKS
 - **Minimum iOS:** 15.1
 
