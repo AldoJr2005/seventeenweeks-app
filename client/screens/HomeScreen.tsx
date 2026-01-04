@@ -227,27 +227,39 @@ export default function HomeScreen() {
           snapToInterval={NUTRITION_CARD_WIDTH}
           contentContainerStyle={{ gap: Spacing.sm }}
         >
-          <Card style={[styles.nutritionCard, { width: NUTRITION_CARD_WIDTH }]}>
-            <View style={styles.nutritionCardContent}>
-              <ProgressRing
-                progress={caloriesProgress}
-                size={72}
-                strokeWidth={7}
-                color={caloriesProgress > 1 ? theme.warning : theme.primary}
-              />
-              <View style={styles.nutritionInfo}>
-                <ThemedText style={styles.nutritionMainValue}>
-                  {caloriesRemaining > 0 ? caloriesRemaining.toLocaleString() : 0}
-                </ThemedText>
-                <ThemedText style={[styles.nutritionLabel, { color: theme.textSecondary }]}>
-                  calories remaining
-                </ThemedText>
-                <ThemedText style={[styles.nutritionSubLabel, { color: theme.textSecondary }]}>
-                  {nutritionTotals.calories.toLocaleString()} / {targetCalories.toLocaleString()} cal
-                </ThemedText>
+          <Pressable
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              navigation.getParent()?.navigate("LogTab", { screen: "NutritionLog", params: { date: today } });
+            }}
+            style={({ pressed }) => [
+              { width: NUTRITION_CARD_WIDTH },
+              pressed && { opacity: 0.7 }
+            ]}
+          >
+            <Card style={styles.nutritionCard}>
+              <View style={styles.nutritionCardContent}>
+                <ProgressRing
+                  progress={caloriesProgress}
+                  size={72}
+                  strokeWidth={7}
+                  color={caloriesProgress > 1 ? theme.warning : theme.primary}
+                />
+                <View style={styles.nutritionInfo}>
+                  <ThemedText style={styles.nutritionMainValue}>
+                    {caloriesRemaining > 0 ? caloriesRemaining.toLocaleString() : 0}
+                  </ThemedText>
+                  <ThemedText style={[styles.nutritionLabel, { color: theme.textSecondary }]}>
+                    calories remaining
+                  </ThemedText>
+                  <ThemedText style={[styles.nutritionSubLabel, { color: theme.textSecondary }]}>
+                    {nutritionTotals.calories.toLocaleString()} / {targetCalories.toLocaleString()} cal
+                  </ThemedText>
+                </View>
+                <Feather name="chevron-right" size={20} color={theme.textSecondary} style={styles.nutritionChevron} />
               </View>
-            </View>
-          </Card>
+            </Card>
+          </Pressable>
 
           <Card style={[styles.nutritionCard, { width: NUTRITION_CARD_WIDTH }]}>
             <View style={styles.macrosRow}>
@@ -623,21 +635,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.lg,
+    paddingRight: Spacing.xs,
   },
   nutritionInfo: {
     flex: 1,
   },
   nutritionMainValue: {
-    ...Typography.title1,
+    ...Typography.largeTitle,
     fontWeight: "700",
+    fontSize: 40,
+    letterSpacing: -0.5,
   },
   nutritionLabel: {
     ...Typography.subheadline,
     marginTop: Spacing.xs,
+    fontWeight: "500",
   },
   nutritionSubLabel: {
-    ...Typography.caption,
-    marginTop: Spacing.xs,
+    ...Typography.footnote,
+    marginTop: Spacing.xs / 2,
+    opacity: 0.8,
+  },
+  nutritionChevron: {
+    opacity: 0.5,
   },
   macrosRow: {
     flexDirection: "row",
