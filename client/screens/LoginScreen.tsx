@@ -122,6 +122,9 @@ export default function LoginScreen() {
       showsVerticalScrollIndicator={false}
     >
       <Image source={require("../../assets/images/icon.png")} style={styles.logo} resizeMode="contain" />
+      <ThemedText style={[styles.tagline, { color: theme.textSecondary }]}>
+        Transform your body in 17 weeks
+      </ThemedText>
       
       {hasLocalProfile ? (
         <>
@@ -363,7 +366,13 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: BorderRadius.xl,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+  tagline: {
+    ...Typography.subheadline,
+    textAlign: "center",
+    marginBottom: Spacing["2xl"],
+    fontWeight: "400",
   },
   greeting: {
     ...Typography.largeTitle,
