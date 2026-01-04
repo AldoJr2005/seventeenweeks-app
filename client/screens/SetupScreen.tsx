@@ -75,6 +75,7 @@ export default function SetupScreen() {
   const createChallenge = useCreateChallenge();
   const createBaseline = useCreateBaselineSnapshot();
   const { goToLogin, refreshAuth, profile } = useAuth();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -313,6 +314,14 @@ export default function SetupScreen() {
       }
 
       await api.profile.update(profile.id, { onboardingComplete: true });
+      await setActiveProfileId(profile.id);
+      
+      // Invalidate and refetch profile and challenge to ensure fresh data
+      await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/challenge"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/challenge"] });
+      
       await setSessionUnlocked(true);
       refreshAuth();
     } catch (err: any) {
