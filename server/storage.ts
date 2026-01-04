@@ -85,6 +85,9 @@ export interface IStorage {
   createFoodEntry(entry: InsertFoodEntry): Promise<FoodEntry>;
   updateFoodEntry(id: string, entry: Partial<InsertFoodEntry>): Promise<FoodEntry | undefined>;
   deleteFoodEntry(id: string): Promise<void>;
+  
+  // TEMPORARY: For testing - clear all daily data
+  clearAllDailyData(challengeId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -321,6 +324,14 @@ export class DatabaseStorage implements IStorage {
 
   async deleteFoodEntry(id: string): Promise<void> {
     await db.delete(foodEntries).where(eq(foodEntries.id, id));
+  }
+
+  // TEMPORARY: For testing - clear all daily data (food entries, day logs, workout logs, habit logs)
+  async clearAllDailyData(challengeId: string): Promise<void> {
+    await db.delete(foodEntries).where(eq(foodEntries.challengeId, challengeId));
+    await db.delete(dayLogs).where(eq(dayLogs.challengeId, challengeId));
+    await db.delete(workoutLogs).where(eq(workoutLogs.challengeId, challengeId));
+    await db.delete(habitLogs).where(eq(habitLogs.challengeId, challengeId));
   }
 }
 

@@ -538,6 +538,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEMPORARY: For testing - clear all daily data when advancing weeks
+  app.post("/api/challenge/:id/clear-daily-data", async (req, res) => {
+    try {
+      await storage.clearAllDailyData(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear daily data" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
