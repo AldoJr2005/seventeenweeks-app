@@ -11,6 +11,7 @@
     "server:prod": "NODE_ENV=production node server_dist/index.js",
     "db:push": "drizzle-kit push",
     "demo:create": "tsx scripts/create-demo-account.ts",
+    "account:reset": "tsx scripts/reset-account.ts",
     "lint": "npx expo lint",
     "lint:fix": "npx expo lint --fix",
     "check:types": "tsc --noEmit",

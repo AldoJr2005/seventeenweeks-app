@@ -381,6 +381,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to reset account by username (for development/testing)
+  app.post("/api/admin/reset-account", async (req, res) => {
+    try {
+      const { username } = req.body;
+      
+      if (!username) {
+        return res.status(400).json({ success: false, error: "Username is required" });
+      }
+
+      // Find the profile by username
+      const profile = await storage.getUserProfileByUsername(username.toLowerCase());
+      
+      if (!profile) {
+        return res.status(404).json({ success: false, error: `No account found with username: ${username}` });
+      }
+
+      // Delete the profile (this will cascade delete the challenge due to foreign key)
+      await storage.deleteUserProfile(profile.id);
+      
+      res.json({ success: true, message: `Account for username "${username}" has been deleted. User can now go through setup again.` });
+    } catch (error) {
+      console.error("Reset account error:", error);
+      res.status(500).json({ success: false, error: "Failed to reset account" });
+    }
+  });
+
   app.post("/api/profile/verify-password", async (req, res) => {
     try {
       const { passwordHash, profileId } = req.body;
