@@ -265,7 +265,7 @@ export default function SetupScreen() {
         sex,
         passwordHash,
         requirePasswordOnOpen: true,
-        autoLockMinutes: 1,
+        autoLockMinutes: 0,
         onboardingComplete: false,
       });
 

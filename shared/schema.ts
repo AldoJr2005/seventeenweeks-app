@@ -150,7 +150,7 @@ export const userProfiles = pgTable("user_profiles", {
   sex: varchar("sex", { length: 10 }),
   passwordHash: text("password_hash").notNull(),
   requirePasswordOnOpen: boolean("require_password_on_open").default(true),
-  autoLockMinutes: integer("auto_lock_minutes").default(1),
+  autoLockMinutes: integer("auto_lock_minutes").default(0),
   onboardingComplete: boolean("onboarding_complete").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
