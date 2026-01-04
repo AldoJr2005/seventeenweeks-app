@@ -965,7 +965,7 @@ export default function SetupScreen() {
           </Pressable>
         ) : null}
         {step < TOTAL_STEPS ? (
-          <Button onPress={() => setStep(step + 1)} disabled={!canContinue()} style={step === 1 ? styles.fullWidthButton : (step >= 3 && step <= 10 ? styles.nextButtonNarrow : styles.nextButton)}>
+          <Button onPress={() => setStep(step + 1)} disabled={!canContinue()} style={step === 1 ? styles.fullWidthButton : styles.nextButtonNarrow}>
             Continue
           </Button>
         ) : (
@@ -1221,9 +1221,8 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.lg,
   },
   nextButtonNarrow: {
-    maxWidth: "60%",
+    width: "45%",
     marginLeft: Spacing.lg,
-    flexShrink: 1,
   },
   errorText: {
     color: "#FF3B30",
