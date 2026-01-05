@@ -45,6 +45,16 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Timeout helper (5 seconds)
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number = 5000): Promise<Response> {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timeout")), timeoutMs)
+    ),
+  ]);
+}
+
 export async function apiRequest(
   method: string,
   route: string,
@@ -53,18 +63,27 @@ export async function apiRequest(
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
 
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  // Use longer timeout for POST/PUT/PATCH requests (account creation, etc.)
+  const isMutation = method === "POST" || method === "PUT" || method === "PATCH";
+  const timeout = isMutation ? 15000 : 5000; // 15 seconds for mutations, 5 for queries
+
+  const res = await fetchWithTimeout(
+    url.toString(),
+    {
+      method,
+      headers: data ? { "Content-Type": "application/json" } : {},
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+    },
+    timeout
+  );
 
   await throwIfResNotOk(res);
   return res;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -73,9 +92,13 @@ export const getQueryFn: <T>(options: {
     const baseUrl = getApiUrl();
     const url = new URL(queryKey.join("/") as string, baseUrl);
 
-    const res = await fetch(url, {
-      credentials: "include",
-    });
+    const res = await fetchWithTimeout(
+      url.toString(),
+      {
+        credentials: "include",
+      },
+      5000 // 5 second timeout
+    );
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
@@ -93,9 +116,12 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: false,
+      gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
+      networkMode: "online",
     },
     mutations: {
       retry: false,
+      networkMode: "online",
     },
   },
 });

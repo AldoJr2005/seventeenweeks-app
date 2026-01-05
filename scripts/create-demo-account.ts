@@ -19,7 +19,7 @@ import {
   type InsertWeeklyCheckIn,
   type InsertBaselineSnapshot,
 } from "../shared/schema";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import * as Crypto from "crypto";
 
 // Helper to hash password (SHA256)
@@ -69,6 +69,31 @@ function getMonday(date: Date): Date {
 async function createDemoAccount() {
   console.log("Creating demo account...");
 
+  // 0. Delete existing demo account and all related data
+  console.log("Cleaning up existing demo account...");
+  const existingProfiles = await db.select().from(userProfiles).where(eq(userProfiles.username, "demo"));
+  
+  for (const existingProfile of existingProfiles) {
+    // Delete all data associated with this profile's challenges
+    const existingChallenges = await db.select().from(challenges).where(eq(challenges.userId, existingProfile.id));
+    
+    for (const challenge of existingChallenges) {
+      // Delete all related data
+      await db.delete(foodEntries).where(eq(foodEntries.challengeId, challenge.id));
+      await db.delete(dayLogs).where(eq(dayLogs.challengeId, challenge.id));
+      await db.delete(workoutLogs).where(eq(workoutLogs.challengeId, challenge.id));
+      await db.delete(habitLogs).where(eq(habitLogs.challengeId, challenge.id));
+      await db.delete(weeklyPhotos).where(eq(weeklyPhotos.challengeId, challenge.id));
+      await db.delete(weeklyCheckIns).where(eq(weeklyCheckIns.challengeId, challenge.id));
+      await db.delete(baselineSnapshots).where(eq(baselineSnapshots.challengeId, challenge.id));
+      await db.delete(challenges).where(eq(challenges.id, challenge.id));
+    }
+    
+    // Delete the profile
+    await db.delete(userProfiles).where(eq(userProfiles.id, existingProfile.id));
+    console.log(`Deleted existing demo profile: ${existingProfile.id}`);
+  }
+
   // 1. Create user profile
   const passwordHash = hashPassword("1234");
   const demoProfile: InsertUserProfile = {
@@ -90,9 +115,8 @@ async function createDemoAccount() {
   const [profile] = await db.insert(userProfiles).values(demoProfile).returning();
   console.log(`Created profile: ${profile.id}`);
 
-  // 2. Create challenge (started 7 weeks ago)
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - (7 * 7)); // 7 weeks ago
+  // 2. Create challenge (started on Jan 4, 2025 to match getToday() which returns Jan 25, 2025 = week 4)
+  const startDate = new Date("2025-01-04T00:00:00");
   const startDateStr = startDate.toISOString().split("T")[0];
 
   const challenge: InsertChallenge = {
@@ -175,10 +199,7 @@ async function createDemoAccount() {
       currentDate.setDate(currentDate.getDate() + day);
       const dateStr = currentDate.toISOString().split("T")[0];
 
-      // Skip future dates
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (currentDate > today) continue;
+      // Create data for all dates (not skipping future dates since getToday() is hardcoded)
 
       const calories = getRandomCalories(1700);
       const macros = getMacros(calories);

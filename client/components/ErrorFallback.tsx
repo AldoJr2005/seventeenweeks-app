@@ -62,7 +62,17 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
           Something went wrong
         </Text>
 
-        <Text style={[styles.message, { color: theme.textSecondary }]}>
+        <Text style={[styles.message, { color: theme.textSecondary, marginBottom: 8, marginHorizontal: Spacing.lg }]}>
+          {error?.message || error?.toString() || String(error) || "An unexpected error occurred"}
+        </Text>
+
+        {error?.stack && __DEV__ ? (
+          <Text style={[styles.message, { color: theme.textSecondary, fontSize: 12, marginHorizontal: Spacing.lg, fontFamily: "monospace" }]}>
+            {error.stack.split('\n').slice(0, 3).join('\n')}
+          </Text>
+        ) : null}
+
+        <Text style={[styles.message, { color: theme.textSecondary, fontSize: 14, marginTop: 8 }]}>
           Please reload the app to continue.
         </Text>
 

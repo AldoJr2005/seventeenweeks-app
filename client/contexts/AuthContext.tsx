@@ -53,6 +53,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [profileLoading, checkSession]);
 
+  // Timeout loading after 5 seconds to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (checkingSession) {
+        setCheckingSession(false);
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [checkingSession]);
+
   const unlock = useCallback(async (password: string): Promise<boolean> => {
     if (!profile) return false;
     
@@ -105,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refetch();
     setIsLoggedOut(false);
     setWantsNewAccount(false);
+    // After login, we've already unlocked, so set isUnlocked to true
+    setIsUnlocked(true);
   }, [refetch]);
 
   const goToLogin = useCallback(() => {

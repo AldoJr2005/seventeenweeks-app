@@ -449,13 +449,13 @@ export default function SettingsScreen() {
         </Pressable>
       </Card>
 
-      <View style={styles.signatureContainer}>
-        <Image
-          source={require("../../assets/images/signature.png")}
-          style={[styles.signature, { tintColor: "#000000" }]}
-          resizeMode="contain"
-        />
-      </View>
+          <View style={styles.signatureContainer}>
+            <Image
+              source={require("../../assets/images/signature.png")}
+              style={[styles.signature, { tintColor: isDark ? "#FFFFFF" : "#000000" }]}
+              resizeMode="contain"
+            />
+          </View>
 
       <Modal visible={showPasswordModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>

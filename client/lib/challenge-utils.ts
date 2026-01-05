@@ -29,56 +29,25 @@ export function formatDateYYYYMMDD(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-// TEMPORARY: Store start time for 10-second countdown (must match PreChallengeScreen)
-let tempCountdownStart: number | null = null;
-
 export function getChallengeStatus(startDateStr: string): ChallengeStatus {
-  // TEMPORARY: For testing, treat challenge as ACTIVE after 10-second countdown
-  const TEMP_SECONDS = 10;
-  if (tempCountdownStart === null) {
-    tempCountdownStart = Date.now() + TEMP_SECONDS * 1000;
-  }
-  const now = Date.now();
-  if (now >= tempCountdownStart) {
-    return "ACTIVE"; // Countdown finished, show home screen
+  const startDate = new Date(startDateStr + "T00:00:00");
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  if (today < startDate) {
+    return "PRE_CHALLENGE";
   }
   
-  // Original code (commented out temporarily):
-  // const startDate = new Date(startDateStr + "T00:00:00");
-  // const now = new Date();
-  // const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  // 
-  // if (today < startDate) {
-  //   return "PRE_CHALLENGE";
-  // }
-  // 
-  // const endDate = new Date(startDate);
-  // endDate.setDate(endDate.getDate() + 17 * 7);
-  // 
-  // if (today >= endDate) {
-  //   return "COMPLETED";
-  // }
-  // 
-  // return "ACTIVE";
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 17 * 7);
   
-  return "PRE_CHALLENGE"; // Still counting down
+  if (today >= endDate) {
+    return "COMPLETED";
+  }
+  
+  return "ACTIVE";
 }
 
-export function getCurrentWeekNumber(startDateStr: string): number {
-  // TEMPORARY: Return week 4 for testing
-  return 4;
-  
-  // Original code (commented out temporarily):
-  // const startDate = new Date(startDateStr + "T00:00:00");
-  // const now = new Date();
-  // const diffMs = now.getTime() - startDate.getTime();
-  // const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  // 
-  // if (diffDays < 0) return 0;
-  // 
-  // const weekNumber = Math.floor(diffDays / 7) + 1;
-  // return Math.min(weekNumber, 17);
-}
 
 export function getDayOfChallenge(startDateStr: string): number {
   const startDate = new Date(startDateStr + "T00:00:00");

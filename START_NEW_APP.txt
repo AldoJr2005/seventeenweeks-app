@@ -1,0 +1,37 @@
+I want to create a new iOS app. Here are the details:
+
+**App Name:** [Your app name]
+**App Description:** [Brief description of what the app does]
+
+**Design:**
+- I have the Figma design ready
+- Figma file: [Link to Figma file or "I'll share it"]
+- Design is complete: [Yes/No - any sections missing?]
+
+**Technical Requirements:**
+- Platform: iOS (may add Android later)
+- Framework: Expo/React Native (like my previous apps)
+- Target: TestFlight and App Store distribution
+- Bundle ID: [Leave blank for me to suggest, or specify if you have one]
+- App Category: [e.g., Health & Fitness, Productivity, Entertainment, etc.]
+
+**Key Features:**
+- [List main features, e.g., "User authentication", "Data tracking", "Photo uploads", etc.]
+- [Any specific requirements or constraints]
+
+**Backend/Database:**
+- [Do you need a backend? Yes/No]
+- [If yes: Simple backend with PostgreSQL (like previous apps)? Or different?]
+
+**Notes:**
+- [Any special requirements, existing accounts to use, etc.]
+
+Please:
+1. Review the Figma design
+2. Implement it in Expo/React Native
+3. Set up the project structure
+4. Make it ready for TestFlight (proper bundle ID, signing, etc.)
+5. Follow the same workflow as my previous iOS apps
+
+Let me know if you need any additional information or clarifications about the design.
+

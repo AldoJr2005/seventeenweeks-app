@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, View, ActivityIndicator } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -22,28 +22,11 @@ import type { Challenge } from "@shared/schema";
 
 function AppContent() {
   const { isLoading, needsSetup, isUnlocked, isLoggedOut, profile } = useAuth();
-  const { data: challenge, isLoading: challengeLoading } = useChallenge();
-  const [forceUpdate, setForceUpdate] = React.useState(0);
+  const { data: challenge } = useChallenge();
 
-  // TEMPORARY: Force re-render every second to check challenge status during countdown
-  React.useEffect(() => {
-    if (challenge) {
-      const status = getChallengeStatus((challenge as Challenge).startDate);
-      if (status === "PRE_CHALLENGE") {
-        const interval = setInterval(() => {
-          setForceUpdate((prev) => prev + 1);
-        }, 1000);
-        return () => clearInterval(interval);
-      }
-    }
-  }, [challenge, forceUpdate]);
-
-  if (isLoading || challengeLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return <View style={{ flex: 1, backgroundColor: "#000000" }} />;
   }
 
   // Show login screen when user clicks "Login" button
@@ -95,10 +78,5 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

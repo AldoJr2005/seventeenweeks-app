@@ -58,7 +58,7 @@ export default function HomeScreen() {
   const today = getToday();
   const { data: foodEntries } = useFoodEntries(challenge?.id, today);
   const [nutritionCardIndex, setNutritionCardIndex] = useState(0);
-  const currentWeek = challenge ? getCurrentWeekNumber(challenge.startDate) : 1;
+  const prevAllComplete = useRef(false);
 
   useEffect(() => {
     if (!challengeLoading && !challenge) {
@@ -66,68 +66,25 @@ export default function HomeScreen() {
     }
   }, [challenge, challengeLoading, navigation]);
 
-  if (challengeLoading) {
-    return (
-      <ThemedView style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot }]}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </ThemedView>
-    );
-  }
-
-  if (!challenge) {
-    return null;
-  }
-
+  // Calculate allDailyComplete before early returns to ensure hooks are consistent
+  const currentWeek = challenge ? getCurrentWeekNumber(challenge.startDate) : 0;
   const todayNutrition = (dayLogs as DayLog[] | undefined)?.find(log => log.date === today);
   const todayWorkout = (workoutLogs as WorkoutLog[] | undefined)?.find(log => log.date === today);
   const todayHabits = (habitLogs as HabitLog[] | undefined)?.find(log => log.date === today);
-  const currentPhoto = (weeklyPhotos as WeeklyPhoto[] | undefined)?.find(p => p.weekNumber === currentWeek);
-  const currentCheckIn = (weeklyCheckIns as WeeklyCheckIn[] | undefined)?.find(c => c.weekNumber === currentWeek);
-
   const nutritionDone = !!todayNutrition && !todayNutrition.skipped;
-  const nutritionStatus = todayNutrition ? (todayNutrition.skipped ? "Skipped" : "Done") : "Pending";
   const workoutDone = !!todayWorkout;
-  const workoutStatus = todayWorkout ? "Done" : "Pending";
-  const weeklyCheckInStatus = currentPhoto && currentCheckIn 
-    ? "Done" 
-    : currentPhoto 
-      ? "Weight pending" 
-      : currentCheckIn 
-        ? "Photo pending" 
-        : "Pending";
-
   const habitsCompleted = [
     todayHabits?.waterDone,
     todayHabits?.stepsDone,
     todayHabits?.sleepDone,
   ].filter(Boolean).length;
-  
   const allDailyComplete = nutritionDone && workoutDone && habitsCompleted === 3;
-  const prevAllComplete = useRef(allDailyComplete);
   
-  useEffect(() => {
-    if (allDailyComplete && !prevAllComplete.current) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-    prevAllComplete.current = allDailyComplete;
-  }, [allDailyComplete]);
-  
-  const motivationalPhrase = MOTIVATIONAL_PHRASES[currentWeek % MOTIVATIONAL_PHRASES.length];
-
-  const weekDayLogs = (dayLogs as DayLog[] | undefined)?.filter(log => {
-    const logWeek = getWeekNumber(challenge.startDate, log.date);
-    return logWeek === currentWeek && !log.skipped;
-  }) || [];
-
-  const weekWorkouts = (workoutLogs as WorkoutLog[] | undefined)?.filter(log => {
-    const logWeek = getWeekNumber(challenge.startDate, log.date);
-    return logWeek === currentWeek && log.type !== "Rest";
-  }) || [];
-
-  const targetCalories = challenge.targetCalories || 2000;
-  const targetProtein = challenge.targetProteinGrams || 150;
-  const targetCarbs = challenge.targetCarbsGrams || 200;
-  const targetFat = challenge.targetFatGrams || 65;
+  // Move useMemo and all calculations before conditional returns to follow Rules of Hooks
+  const targetCalories = challenge?.targetCalories || 2000;
+  const targetProtein = challenge?.targetProteinGrams || 150;
+  const targetCarbs = challenge?.targetCarbsGrams || 200;
+  const targetFat = challenge?.targetFatGrams || 65;
 
   const nutritionTotals = useMemo(() => {
     if (!foodEntries) return { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, cholesterol: 0 };
@@ -142,6 +99,13 @@ export default function HomeScreen() {
       cholesterol: acc.cholesterol + Math.round((entry.cholesterolPerServing || 0) * entry.servingsCount),
     }), { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0, cholesterol: 0 });
   }, [foodEntries]);
+
+  useEffect(() => {
+    if (allDailyComplete && !prevAllComplete.current && challenge) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    prevAllComplete.current = allDailyComplete;
+  }, [allDailyComplete, challenge]);
 
   const targetFiber = 25;
   const targetSugar = 50;
@@ -163,6 +127,43 @@ export default function HomeScreen() {
       Haptics.selectionAsync();
     }
   };
+
+  // Define variables that depend on challenge (but handle null case)
+  const currentPhoto = challenge ? (weeklyPhotos as WeeklyPhoto[] | undefined)?.find(p => p.weekNumber === currentWeek) : undefined;
+  const currentCheckIn = challenge ? (weeklyCheckIns as WeeklyCheckIn[] | undefined)?.find(c => c.weekNumber === currentWeek) : undefined;
+  const motivationalPhrase = MOTIVATIONAL_PHRASES[currentWeek % MOTIVATIONAL_PHRASES.length];
+  
+  const nutritionStatus = todayNutrition ? (todayNutrition.skipped ? "Skipped" : "Done") : "Pending";
+  const workoutStatus = todayWorkout ? "Done" : "Pending";
+  const weeklyCheckInStatus = currentPhoto && currentCheckIn 
+    ? "Done" 
+    : currentPhoto 
+      ? "Weight pending" 
+      : currentCheckIn 
+        ? "Photo pending" 
+        : "Pending";
+
+  const weekDayLogs = challenge ? ((dayLogs as DayLog[] | undefined)?.filter(log => {
+    const logWeek = getWeekNumber(challenge.startDate, log.date);
+    return logWeek === currentWeek && !log.skipped;
+  }) || []) : [];
+
+  const weekWorkouts = challenge ? ((workoutLogs as WorkoutLog[] | undefined)?.filter(log => {
+    const logWeek = getWeekNumber(challenge.startDate, log.date);
+    return logWeek === currentWeek && log.type !== "Rest";
+  }) || []) : [];
+
+  if (challengeLoading) {
+    return (
+      <ThemedView style={[styles.loadingContainer, { backgroundColor: theme.backgroundRoot }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </ThemedView>
+    );
+  }
+
+  if (!challenge) {
+    return null; // useEffect will navigate to onboarding
+  }
 
   return (
     <ScrollView

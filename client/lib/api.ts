@@ -31,16 +31,40 @@ async function fetchApi<T>(endpoint: string): Promise<T> {
     if (response.status === 404 && endpoint.includes("/api/profiles")) {
       return [] as T;
     }
-    throw new Error(`API error: ${response.status}`);
+    
+    // Try to extract error message from response
+    let errorMessage = `API error: ${response.status}`;
+    try {
+      const text = await response.text();
+      if (text) {
+        try {
+          const data = JSON.parse(text);
+          errorMessage = data.error || data.message || text || errorMessage;
+        } catch {
+          errorMessage = text || errorMessage;
+        }
+      }
+    } catch {
+      // Failed to read error message
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 }
 
 async function apiRequest<T>(method: string, route: string, data?: unknown): Promise<T> {
-  const res = await apiRequestBase(method, route, data);
-  const text = await res.text();
-  if (!text) return undefined as T;
-  return JSON.parse(text) as T;
+  try {
+    const res = await apiRequestBase(method, route, data);
+    const text = await res.text();
+    if (!text) return undefined as T;
+    return JSON.parse(text) as T;
+  } catch (err: any) {
+    // Re-throw with better error message extraction
+    if (err?.message) {
+      throw err;
+    }
+    throw new Error(err?.toString() || "Unknown error occurred");
+  }
 }
 
 export const api = {

@@ -112,7 +112,24 @@ export default function SetupScreen() {
   const [baselinePhoto, setBaselinePhoto] = useState<string | null>(null);
   const [macroPreset, setMacroPreset] = useState("BALANCED");
 
-  const startDateFormatted = getStartDateForNewChallenge();
+  // Wrap in try-catch to prevent crashes during initialization
+  let startDateFormatted: string;
+  try {
+    startDateFormatted = getStartDateForNewChallenge();
+  } catch (err) {
+    console.error("Error getting start date:", err);
+    // Fallback to next Monday
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
+    const nextMonday = new Date(now);
+    nextMonday.setDate(now.getDate() + daysUntilMonday);
+    nextMonday.setHours(0, 0, 0, 0);
+    const year = nextMonday.getFullYear();
+    const month = String(nextMonday.getMonth() + 1).padStart(2, "0");
+    const day = String(nextMonday.getDate()).padStart(2, "0");
+    startDateFormatted = `${year}-${month}-${day}`;
+  }
 
   const getHeightValue = (): number => {
     if (heightUnit === "ft") {
@@ -145,26 +162,36 @@ export default function SetupScreen() {
   }, [currentWeight, weightUnit, heightUnit, heightFeet, heightInches, heightCm, age, sex, activityLevel]);
 
   const targetCalories = useMemo(() => {
-    const deficit = DEFICIT_LEVELS.find(d => d.id === deficitLevel);
-    return calculateCalorieTarget(tdee, deficit?.lossPerWeek || 1);
+    try {
+      const deficit = DEFICIT_LEVELS?.find(d => d.id === deficitLevel);
+      return calculateCalorieTarget(tdee, deficit?.lossPerWeek || 1);
+    } catch (err) {
+      console.error("Error calculating target calories:", err);
+      return 2000; // Fallback value
+    }
   }, [tdee, deficitLevel]);
 
   const eatingWindow = useMemo(() => {
-    const fasting = FASTING_TYPES.find(f => f.id === fastingType);
-    if (!fasting || fastingType === "none") return null;
-    const [lunchHour] = lunchTime.split(":").map(Number);
-    const startHour = lunchHour;
-    const endHour = (startHour + fasting.eatHours) % 24;
-    const formatHour = (h: number) => {
-      const period = h >= 12 ? "PM" : "AM";
-      const hour12 = h % 12 || 12;
-      return `${hour12}:00 ${period}`;
-    };
-    return {
-      start: `${String(startHour).padStart(2, "0")}:00`,
-      end: `${String(endHour).padStart(2, "0")}:00`,
-      display: `${formatHour(startHour)} - ${formatHour(endHour)}`,
-    };
+    try {
+      const fasting = FASTING_TYPES?.find(f => f.id === fastingType);
+      if (!fasting || fastingType === "none") return null;
+      const [lunchHour] = (lunchTime || "12:00").split(":").map(Number);
+      const startHour = lunchHour || 12;
+      const endHour = (startHour + (fasting.eatHours || 8)) % 24;
+      const formatHour = (h: number) => {
+        const period = h >= 12 ? "PM" : "AM";
+        const hour12 = h % 12 || 12;
+        return `${hour12}:00 ${period}`;
+      };
+      return {
+        start: `${String(startHour).padStart(2, "0")}:00`,
+        end: `${String(endHour).padStart(2, "0")}:00`,
+        display: `${formatHour(startHour)} - ${formatHour(endHour)}`,
+      };
+    } catch (err) {
+      console.error("Error calculating eating window:", err);
+      return null;
+    }
   }, [fastingType, lunchTime]);
 
   const finalStepGoal = useCustomSteps ? (parseInt(customStepGoal) || 8000) : stepGoal;
@@ -173,11 +200,19 @@ export default function SetupScreen() {
     if (!targetCalories || targetCalories <= 0) {
       return { protein: 0, carbs: 0, fat: 0 };
     }
-    const preset = MACRO_PRESETS.find(p => p.id === macroPreset) || MACRO_PRESETS[0];
-    const protein = Math.round((targetCalories * preset.protein) / 4);
-    const carbs = Math.round((targetCalories * preset.carbs) / 4);
-    const fat = Math.round((targetCalories * preset.fat) / 9);
-    return { protein, carbs, fat };
+    try {
+      const preset = MACRO_PRESETS?.find(p => p.id === macroPreset) || MACRO_PRESETS?.[0];
+      if (!preset) {
+        return { protein: 0, carbs: 0, fat: 0 };
+      }
+      const protein = Math.round((targetCalories * (preset.protein || 0)) / 4);
+      const carbs = Math.round((targetCalories * (preset.carbs || 0)) / 4);
+      const fat = Math.round((targetCalories * (preset.fat || 0)) / 9);
+      return { protein, carbs, fat };
+    } catch (err) {
+      console.error("Error calculating macros:", err);
+      return { protein: 0, carbs: 0, fat: 0 };
+    }
   }, [targetCalories, macroPreset]);
 
   const isEmailValid = email.trim().length === 0 || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -254,52 +289,70 @@ export default function SetupScreen() {
       const heightValue = getHeightValue();
       const weightValue = parseFloat(currentWeight);
 
-      const profile = await createProfile.mutateAsync({
-        username: username.trim().toLowerCase(),
-        name: name.trim(),
-        email: email.trim() || null,
-        phone: phone.trim() || null,
-        heightValue,
-        heightUnit,
-        weightUnit,
-        currentWeight: weightValue,
-        age: parseInt(age),
-        sex,
-        passwordHash,
-        requirePasswordOnOpen: true,
-        autoLockMinutes: 0,
-        onboardingComplete: false,
-      });
+      let profile;
+      try {
+        profile = await createProfile.mutateAsync({
+          username: username.trim().toLowerCase(),
+          name: name.trim(),
+          email: email.trim() || null,
+          phone: phone.trim() || null,
+          heightValue,
+          heightUnit,
+          weightUnit,
+          currentWeight: weightValue,
+          age: parseInt(age),
+          sex,
+          passwordHash,
+          requirePasswordOnOpen: true,
+          autoLockMinutes: 0,
+          onboardingComplete: false,
+        });
+      } catch (profileErr: any) {
+        console.error("Profile creation error:", profileErr);
+        throw new Error(profileErr?.message || "Failed to create account. Please check your connection and try again.");
+      }
 
-      const challenge = await createChallenge.mutateAsync({
-        userId: profile.id,
-        status: "PRE_CHALLENGE",
-        startDate: startDateFormatted,
-        startWeight: weightValue,
-        goalWeight: parseFloat(goalWeight),
-        unit: weightUnit,
-        stepGoal: finalStepGoal,
-        sleepGoal: 8,
-        activityLevel,
-        tdeeEstimate: tdee,
-        targetCalories,
-        targetWeeklyLoss: DEFICIT_LEVELS.find(d => d.id === deficitLevel)?.lossPerWeek || 1,
-        deficitLevel,
-        workoutsPerWeek,
-        preferredSplit,
-        doesRun,
-        runningDaysPerWeek: doesRun ? runningDaysPerWeek : 0,
-        fastingType: fastingType !== "none" ? fastingType : null,
-        lunchTime: fastingType !== "none" ? lunchTime : null,
-        eatingStartTime: eatingWindow?.start || null,
-        eatingEndTime: eatingWindow?.end || null,
-        reminderIntensity,
-        smartReminders: true,
-        targetProteinGrams: macros.protein,
-        targetCarbsGrams: macros.carbs,
-        targetFatGrams: macros.fat,
-        macroPreset,
-      });
+      let challenge;
+      try {
+        challenge = await createChallenge.mutateAsync({
+          userId: profile.id,
+          status: "PRE_CHALLENGE",
+          startDate: startDateFormatted,
+          startWeight: weightValue,
+          goalWeight: parseFloat(goalWeight),
+          unit: weightUnit,
+          stepGoal: finalStepGoal,
+          sleepGoal: 8,
+          activityLevel,
+          tdeeEstimate: tdee,
+          targetCalories,
+          targetWeeklyLoss: DEFICIT_LEVELS.find(d => d.id === deficitLevel)?.lossPerWeek || 1,
+          deficitLevel,
+          workoutsPerWeek,
+          preferredSplit,
+          doesRun,
+          runningDaysPerWeek: doesRun ? runningDaysPerWeek : 0,
+          fastingType: fastingType !== "none" ? fastingType : null,
+          lunchTime: fastingType !== "none" ? lunchTime : null,
+          eatingStartTime: eatingWindow?.start || null,
+          eatingEndTime: eatingWindow?.end || null,
+          reminderIntensity,
+          smartReminders: true,
+          targetProteinGrams: macros.protein,
+          targetCarbsGrams: macros.carbs,
+          targetFatGrams: macros.fat,
+          macroPreset,
+        });
+      } catch (challengeErr: any) {
+        console.error("Challenge creation error:", challengeErr);
+        // Clean up profile if challenge creation fails
+        try {
+          await api.profile.delete(profile.id);
+        } catch (deleteErr) {
+          console.error("Failed to clean up profile:", deleteErr);
+        }
+        throw new Error(challengeErr?.message || "Failed to create challenge. Please try again.");
+      }
 
       try {
         await createBaseline.mutateAsync({
@@ -317,17 +370,61 @@ export default function SetupScreen() {
       await setActiveProfileId(profile.id);
       
       // Invalidate and refetch profile and challenge to ensure fresh data
-      await queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/challenge"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/profile"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/challenge"] });
+      // This must complete before refreshAuth() to ensure App.tsx sees the challenge
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/challenge"] });
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["/api/profile"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/challenge"] }),
+      ]);
       
       await setSessionUnlocked(true);
-      refreshAuth();
+      // Small delay to ensure App.tsx re-renders with fresh challenge data
+      setTimeout(() => {
+        refreshAuth();
+      }, 100);
     } catch (err: any) {
       console.error("Setup error:", err);
-      const errorMessage = err?.message || err?.toString() || "Failed to create your plan. Please check your connection and try again.";
+      console.error("Error type:", typeof err);
+      console.error("Error keys:", err ? Object.keys(err) : "null");
+      console.error("Error message:", err?.message);
+      console.error("Error toString:", err?.toString());
       console.error("Full error details:", JSON.stringify(err, null, 2));
+      
+      // Extract more specific error messages
+      let errorMessage = "Something went wrong. Please try again.";
+      
+      // Try multiple ways to extract error message
+      if (err?.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err?.data?.error) {
+        errorMessage = err.data.error;
+      } else if (err?.data?.message) {
+        errorMessage = err.data.message;
+      } else if (err?.error) {
+        errorMessage = err.error;
+      } else if (err?.message) {
+        errorMessage = err.message;
+      } else if (typeof err === "string") {
+        errorMessage = err;
+      } else if (err?.toString && err.toString() !== "[object Object]") {
+        errorMessage = err.toString();
+      }
+      
+      // Handle common error cases with user-friendly messages
+      const lowerMessage = errorMessage.toLowerCase();
+      if (lowerMessage.includes("timeout") || lowerMessage.includes("request timeout")) {
+        errorMessage = "Request timed out. Please check your internet connection and try again.";
+      } else if (lowerMessage.includes("username") && (lowerMessage.includes("unique") || lowerMessage.includes("exists") || lowerMessage.includes("already"))) {
+        errorMessage = "This username is already taken. Please choose a different one.";
+      } else if (lowerMessage.includes("network") || lowerMessage.includes("fetch") || lowerMessage.includes("failed to fetch")) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (lowerMessage.includes("invalid") || lowerMessage.includes("required")) {
+        errorMessage = `Invalid data: ${errorMessage}`;
+      }
+      
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -952,6 +1049,16 @@ export default function SetupScreen() {
     }
   };
 
+  // Always show error at the bottom if present
+  const renderError = () => {
+    if (!error) return null;
+    return (
+      <View style={styles.errorContainer}>
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+      </View>
+    );
+  };
+
   return (
     <KeyboardAwareScrollViewCompat
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
@@ -965,6 +1072,8 @@ export default function SetupScreen() {
       </View>
 
       {renderStep()}
+
+      {renderError()}
 
       <View style={[styles.buttonRow, step === 1 ? styles.buttonRowCentered : null, { paddingBottom: Math.max(insets.bottom + 100, 120) }]}>
         {step > 1 ? (
@@ -1234,10 +1343,18 @@ const styles = StyleSheet.create({
     maxWidth: "65%",
     marginLeft: Spacing.lg,
   },
+  errorContainer: {
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.lg,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: "rgba(255, 59, 48, 0.1)",
+  },
   errorText: {
     color: "#FF3B30",
     textAlign: "center",
     ...Typography.footnote,
+    fontWeight: "600",
   },
   macroCard: {
     padding: Spacing.lg,

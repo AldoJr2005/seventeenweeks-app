@@ -14,7 +14,8 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import { useCreateChallenge } from "@/hooks/useChallenge";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
 import { useCreateBaselineSnapshot } from "@/hooks/useBaseline";
-import { getUpcomingMonday, formatDate } from "@/lib/date-utils";
+import { formatDate } from "@/lib/date-utils";
+import { getStartDateForNewChallenge } from "@/lib/challenge-utils";
 import { calculateTDEE, calculateCalorieTarget } from "@/lib/tdee-utils";
 
 const TOTAL_STEPS = 8;
@@ -31,6 +32,7 @@ const DEFICIT_LEVELS = [
   { id: "conservative", label: "Conservative", lossPerWeek: 0.5, desc: "0.5 lbs/week - Sustainable" },
   { id: "moderate", label: "Moderate", lossPerWeek: 1.0, desc: "1 lb/week - Recommended" },
   { id: "aggressive", label: "Aggressive", lossPerWeek: 1.5, desc: "1.5 lbs/week - Challenging" },
+  { id: "really_aggressive", label: "Really Aggressive", lossPerWeek: 2.0, desc: "2 lbs/week - Very Challenging" },
 ];
 
 const TRAINING_STYLES = [
@@ -83,7 +85,7 @@ export default function OnboardingScreen() {
   const [reflectionDay, setReflectionDay] = useState("Sunday");
   const [reflectionTime, setReflectionTime] = useState("20:30");
 
-  const startDate = formatDate(getUpcomingMonday());
+      const startDate = getStartDateForNewChallenge();
   const unit = profile?.weightUnit || "lbs";
 
   const tdee = useMemo(() => {
