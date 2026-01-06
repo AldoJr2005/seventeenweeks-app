@@ -3,7 +3,12 @@ export function getToday(): string {
 }
 
 export function formatDate(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // Use local time instead of UTC to prevent timezone issues
+  // This ensures the date doesn't change early (e.g., at 10pm EST when it's already next day in UTC)
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 export function parseDate(dateStr: string): Date {
